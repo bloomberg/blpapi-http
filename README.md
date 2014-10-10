@@ -20,6 +20,14 @@ for documentation and examples for what is running at
 http://http-api.openbloomberg.com.
 
 
+Getting Involved
+----------------
+
+Want to report a bug, request a feature, contribute to blpapi-http?  Check out
+the [contributions guide](CONTRIBUTING.md) to learn more.  Help is always
+welcome!
+
+
 License
 -------
 
