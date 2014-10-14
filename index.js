@@ -25,12 +25,20 @@ app.use(session({
     store: new Store()
 }));
 
+
 app.use( dispatch({
-    "POST /connect": onConnect,
-    "POST /request/:ns/:service/:request" : onRequest
+    "POST /v1.(\\d+)/connect": onConnectV1,
+    "POST /v1.(\\d+)/request/:ns/:service/:request" : onRequestV1
 }));
 
-function onConnect (req, res) {
+var V1_MINOR = 0;
+
+function onConnectV1 (req, res, next, ver) {
+    if (!(parseInt(ver) <= V1_MINOR)) {
+        next();
+        return;
+    }
+
     var session = req.session;
     if (session.blpsess) {
         console.log("already connected");
@@ -50,56 +58,60 @@ function onConnect (req, res) {
     session.blpsess.start();
 }
 
-function onRequest (req, res, next, ns, svName, reqName) {
-  var session = req.session;
+function onRequestV1 (req, res, next, ver, ns, svName, reqName) {
+    if (!(parseInt(ver) <= V1_MINOR)) {
+        next();
+        return;
+    }
+    var session = req.session;
 
-  if (!session.blpsess) {
-    var err = "Not connected";
-    next(err);
-    return;
-  }
-
-  var service = "//" + ns + "/" + svName;
-  var ref = serviceRefdata++;
-  var check = function () {
-      if (!(service in session.services)) {
-          console.log("Opening service", service);
-          session.blpsess.openService(service, ref);
-          session.blpsess.once('ServiceOpened', function (m) {
-              console.log(m);
-              if (m.correlations[0].value == ref) {
-                  session.services[service] = "open";
-                  opened();
-              }
-          });
-      }
-      else {
-          console.log("Using cached service", service);
-          opened();
-      }
-  };
-
-  var opened = function () {
-    jsonBody( req, res, function (err, body) {
-      if (err) {
-        console.log("ERRROR!", err );
+    if (!session.blpsess) {
+        var err = "Not connected";
         next(err);
         return;
-      }
+    }
 
-      console.log(JSON.stringify(body));
+    var service = "//" + ns + "/" + svName;
+    var ref = serviceRefdata++;
+    var check = function () {
+        if (!(service in session.services)) {
+            console.log("Opening service", service);
+            session.blpsess.openService(service, ref);
+            session.blpsess.once('ServiceOpened', function (m) {
+                console.log(m);
+                if (m.correlations[0].value == ref) {
+                    session.services[service] = "open";
+                    opened();
+                }
+            });
+        }
+        else {
+            console.log("Using cached service", service);
+            opened();
+        }
+    };
 
-      var ref = serviceRefdata++;
+    var opened = function () {
+        jsonBody( req, res, function (err, body) {
+            if (err) {
+                console.log("ERRROR!", err );
+                next(err);
+                return;
+            }
 
-      session.blpsess.request(service, reqName + "Request", body, ref );
-      session.blpsess.once(reqName + "Response", function(m) {
-	    res.setHeader("content-type", "application/json");
-	    res.end(JSON.stringify(m));
-      })
-    });
-  };
+            console.log(JSON.stringify(body));
 
-  check();
+            var ref = serviceRefdata++;
+
+            session.blpsess.request(service, reqName + "Request", body, ref );
+            session.blpsess.once(reqName + "Response", function(m) {
+                res.setHeader("content-type", "application/json");
+                res.end(JSON.stringify(m));
+            })
+        });
+    };
+
+    check();
 
 }
 
