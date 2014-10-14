@@ -3,10 +3,11 @@
 set -e
 
 HOST="http://localhost:3000"
+OPTS="--cookie cookies.txt --cookie-jar cookies.txt"
 echo "Connecting..."
-curl -X POST $HOST/connect --data '{ "x" : 1 }'
+curl $OPTS -X POST $HOST/connect --data '{ "x" : 1 }'
 
-curl -X POST $HOST/request/blp/refdata/HistoricalData --data @- <<EOF
+curl $OPTS -X POST $HOST/request/blp/refdata/HistoricalData --data @- <<EOF
 { "securities": ["IBM US Equity"],
             "fields": ["PX_LAST", "OPEN", "EPS_ANNUALIZED"],
             "startDate": "20120101",
@@ -14,7 +15,7 @@ curl -X POST $HOST/request/blp/refdata/HistoricalData --data @- <<EOF
             "periodicitySelection": "DAILY" }
 EOF
 
-curl -X POST $HOST/request/blp/refdata/HistoricalData --data @- <<EOF
+curl $OPTS -X POST $HOST/request/blp/refdata/HistoricalData --data @- <<EOF
 { "securities": ["AAPL US Equity"],
             "fields": ["PX_LAST", "OPEN"],
             "startDate": "20120101",

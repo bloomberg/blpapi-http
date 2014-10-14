@@ -1,14 +1,16 @@
 "use strict";
 
+var assert = require("assert");
+var util = require("util");
 var http = require('http');
-//var url = require('url');
 var connect = require('connect');
 var morgan = require('morgan');
 var jsonBody = require('body/json');
-//var textBody = require('body');
-//var parseurl = require('parseurl');
+var session = require("express-session");
 
 var blpapi = require('blpapi');
+
+var Store = require("./lib/store.js");
 
 var hp = { serverHost: '127.0.0.1', serverPort: 8194 };
 
@@ -16,14 +18,20 @@ var app = connect();
 
 var serviceRefdata = 0;
 
-var session = {
-  blpsess:null,
-  services:{}
-};
-
 app.use(morgan('combined'));
+app.use(session({
+    secret: 'blumberg',
+    store: new Store()
+}));
 
 app.use( '/connect', function (req, res, next) {
+  var session = req.session;
+  if (session.blpsess) {
+      console.log("already connected");
+      res.end("connected");
+      return;
+  }
+  session.services = {};
   session.blpsess = new blpapi.Session({ serverHost: hp.serverHost,
 				     serverPort: hp.serverPort });
 
@@ -46,6 +54,8 @@ app.use( '/request/', function (req,res,next) {
     next("invalid request format");
     return;
   }
+
+  var session = req.session;
 
   if (!session.blpsess) {
     var err = "Not connected";
