@@ -22,6 +22,8 @@ var serviceRefdata = 0;
 app.use(morgan('combined'));
 app.use(session({
     secret: 'blumberg',
+    resave: true,
+    saveUninitialized: true,
     store: new Store()
 }));
 
