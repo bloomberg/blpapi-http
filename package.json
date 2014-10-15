@@ -1,0 +1,32 @@
+{
+  "name": "blpapi-http",
+  "version": "0.0.0",
+  "description": "bloomberg Open API HTTP Proxy",
+  "main": "server.js",
+  "dependencies": {
+    "blpapi": "^0.1.10"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/bloomberg/blpapi-http"
+  },
+  "keywords": [
+    "bloomberg",
+    "Open API",
+    "blpapi"
+  ],
+  "author": "bloomberg LP",
+  "contributors": [
+    "Tzvetan Mikov <tmikov@gmail.com>",
+    "Eric N. Vander Weele <ericvw@gmail.com>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "http://github.com/bloomberg/blpapi-http/issues"
+  },
+  "homepage": "http://github.com/bloomberg/blpapi-http"
+}
