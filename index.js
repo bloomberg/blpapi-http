@@ -35,8 +35,7 @@ var api1 = connect();
 api1.use( handleSession );
 api1.use( dispatch({
     "/connect": onConnect,
-    "POST /request/:ns/:service/:request" : onRequestPost,
-    "GET /request/:ns/:service/:request" : onRequestGet
+    "/request/:ns/:service/:request" : onRequest
 }));
 
 app.use( versionCheck( 1, 0, api1 ) );
@@ -99,7 +98,7 @@ function onConnect (req, res, next) {
 
 var serviceRefdata = 0;
 
-function onRequestPost (req, res, next, ns, svName, reqName) {
+function onRequest (req, res, next, ns, svName, reqName) {
     var session = req.session;
 
     if (!session || !session.blpsess) {
@@ -109,62 +108,10 @@ function onRequestPost (req, res, next, ns, svName, reqName) {
     }
 
     var service = "//" + ns + "/" + svName;
-    var ref = serviceRefdata++;
     var check = function () {
         if (!(service in session.services)) {
             console.log("Opening service", service);
-            session.blpsess.openService(service, ref);
-            session.blpsess.once('ServiceOpened', function (m) {
-                console.log(m);
-                if (m.correlations[0].value == ref) {
-                    session.services[service] = "open";
-                    opened();
-                }
-            });
-        }
-        else {
-            console.log("Using cached service", service);
-            opened();
-        }
-    };
-
-    var opened = function () {
-        jsonBody( req, res, function (err, body) {
-            if (err) {
-                console.log("ERRROR!", err );
-                next(err);
-                return;
-            }
-
-            console.log(JSON.stringify(body));
-
             var ref = serviceRefdata++;
-
-            session.blpsess.request(service, reqName + "Request", body, ref );
-            session.blpsess.once(reqName + "Response", function(m) {
-                res.sendResponse(m);
-            })
-        });
-    };
-
-    check();
-
-}
-
-function onRequestGet (req, res, next, ns, svName, reqName) {
-    var session = req.session;
-
-    if (!session || !session.blpsess) {
-        var err = "Not connected";
-        next(err);
-        return;
-    }
-
-    var service = "//" + ns + "/" + svName;
-    var ref = serviceRefdata++;
-    var check = function () {
-        if (!(service in session.services)) {
-            console.log("Opening service", service);
             session.blpsess.openService(service, ref);
             session.blpsess.once('ServiceOpened', function (m) {
                 console.log(m);
@@ -181,7 +128,21 @@ function onRequestGet (req, res, next, ns, svName, reqName) {
     };
 
     var opened = function () {
-        var body = req.parsedQuery.q;
+        if (req.method === "GET") {
+            processBody( req.parsedQuery.q );
+        } else {
+            jsonBody( req, res, function (err, body) {
+                if (err) {
+                    console.log("ERRROR!", err );
+                    next(err);
+                    return;
+                }
+                processBody( body );
+            });
+        }
+    };
+
+    var processBody = function (body) {
         console.log(JSON.stringify(body));
 
         var ref = serviceRefdata++;
@@ -191,8 +152,8 @@ function onRequestGet (req, res, next, ns, svName, reqName) {
             res.sendResponse(m);
         })
     };
-
     check();
+
 }
 
 http.createServer(app).listen(3000);
