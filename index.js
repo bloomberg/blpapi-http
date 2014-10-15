@@ -6,7 +6,6 @@ var http = require('http');
 var connect = require('connect');
 var morgan = require('morgan');
 var jsonBody = require('body/json');
-//var session = require("express-session");
 var dispatch = require("dispatch");
 var parseurl = require("parseurl");
 var qs = require("qs");
@@ -14,25 +13,33 @@ var uid = require("uid-safe").sync;
 
 var blpapi = require('blpapi');
 
-var Store = require("./lib/store.js");
-
-var hp = { serverHost: '127.0.0.1', serverPort: 8194 };
-
 var app = connect();
-
-var serviceRefdata = 0;
 
 app.use(morgan('combined'));
 
-app.use( handleSession );
+function versionCheck ( verMajor, verMinor, app ) {
+    return function ( req, res, next ) {
+        var re = /^\/v(\d+)\.(\d+)\//;
+        var match = re.exec(req.url);
+        if (match && parseInt(match[1]) == verMajor && parseInt(match[2]) >= verMinor) {
+            req.originalUrl = req.originalUrl || req.url;
+            req.url = req.url.substr( match[0].length-1); // remove the version prefix
+            return app(req, res, next);
+        }
+        else
+            return next();
+    };
+}
 
-app.use( dispatch({
-    "/v1.(\\d+)/connect": onConnectV1,
-    "POST /v1.(\\d+)/request/:ns/:service/:request" : onRequestV1,
-    "GET /v1.(\\d+)/request/:ns/:service/:request" : onRequestGet
+var api1 = connect();
+api1.use( handleSession );
+api1.use( dispatch({
+    "/connect": onConnect,
+    "POST /request/:ns/:service/:request" : onRequestPost,
+    "GET /request/:ns/:service/:request" : onRequestGet
 }));
 
-var V1_MINOR = 0;
+app.use( versionCheck( 1, 0, api1 ) );
 
 var g_store = {};
 
@@ -67,12 +74,9 @@ function handleSession ( req, res, next ) {
     next();
 }
 
-function onConnectV1 (req, res, next, ver) {
-    if (!(parseInt(ver) <= V1_MINOR)) {
-        next();
-        return;
-    }
+var hp = { serverHost: '127.0.0.1', serverPort: 8194 };
 
+function onConnect (req, res, next) {
     if (req.session && session.blpsess) {
         console.log("already connected");
         res.sendResponse( {connected:1} );
@@ -93,11 +97,9 @@ function onConnectV1 (req, res, next, ver) {
     session.blpsess.start();
 }
 
-function onRequestV1 (req, res, next, ver, ns, svName, reqName) {
-    if (!(parseInt(ver) <= V1_MINOR)) {
-        next();
-        return;
-    }
+var serviceRefdata = 0;
+
+function onRequestPost (req, res, next, ns, svName, reqName) {
     var session = req.session;
 
     if (!session || !session.blpsess) {
@@ -149,11 +151,7 @@ function onRequestV1 (req, res, next, ver, ns, svName, reqName) {
 
 }
 
-function onRequestGet (req, res, next, ver, ns, svName, reqName) {
-    if (!(parseInt(ver) <= V1_MINOR)) {
-        next();
-        return;
-    }
+function onRequestGet (req, res, next, ns, svName, reqName) {
     var session = req.session;
 
     if (!session || !session.blpsess) {
@@ -195,7 +193,6 @@ function onRequestGet (req, res, next, ver, ns, svName, reqName) {
     };
 
     check();
-
 }
 
 http.createServer(app).listen(3000);
