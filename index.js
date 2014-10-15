@@ -82,7 +82,7 @@ function onConnect (req, res, next) {
     // Create a new session
     var session = req.session = {};
     session.blpsess = new BAPI(hp);
-    session.blpsess.start( function () {
+    session.blpsess.start( function (err) {
         res.sendResponse( {connected:1} );
     });
 }
@@ -100,9 +100,14 @@ function onRequest (req, res, next, ns, svName, reqName) {
 
     var service = "//" + ns + "/" + svName;
     var processBody = function (body) {
-        console.log(JSON.stringify(body));
-        session.blpsess.request( service, reqName + "Request", body, function (m) {
-            res.sendResponse( m );
+        var allData = [];
+        session.blpsess.request( service, reqName, body, function (err, data, last) {
+            if (err)
+                return res.sendResponse( {error:1} );
+            console.log( "last=", last );
+            allData.push( data );
+            if (last)
+                res.sendResponse( allData );
         });
     };
 
