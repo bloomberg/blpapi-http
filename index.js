@@ -1,7 +1,5 @@
 "use strict";
 
-//var assert = require("assert");
-//var util = require("util");
 var http = require('http');
 var connect = require('connect');
 var morgan = require('morgan');
@@ -11,7 +9,7 @@ var parseurl = require("parseurl");
 var qs = require("qs");
 var uid = require("uid-safe").sync;
 
-var blpapi = require('blpapi');
+var BAPI = require("./lib/blpapi.js");
 
 var app = connect();
 
@@ -83,17 +81,10 @@ function onConnect (req, res, next) {
     }
     // Create a new session
     var session = req.session = {};
-    session.services = {};
-    session.blpsess = new blpapi.Session({ serverHost: hp.serverHost,
-        serverPort: hp.serverPort });
-
-
-    session.blpsess.on('SessionStarted', function(m) {
-        console.log(m);
+    session.blpsess = new BAPI(hp);
+    session.blpsess.start( function () {
         res.sendResponse( {connected:1} );
     });
-
-    session.blpsess.start();
 }
 
 var serviceRefdata = 0;
@@ -108,52 +99,25 @@ function onRequest (req, res, next, ns, svName, reqName) {
     }
 
     var service = "//" + ns + "/" + svName;
-    var check = function () {
-        if (!(service in session.services)) {
-            console.log("Opening service", service);
-            var ref = serviceRefdata++;
-            session.blpsess.openService(service, ref);
-            session.blpsess.once('ServiceOpened', function (m) {
-                console.log(m);
-                if (m.correlations[0].value == ref) {
-                    session.services[service] = "open";
-                    opened();
-                }
-            });
-        }
-        else {
-            console.log("Using cached service", service);
-            opened();
-        }
-    };
-
-    var opened = function () {
-        if (req.method === "GET") {
-            processBody( req.parsedQuery.q );
-        } else {
-            jsonBody( req, res, function (err, body) {
-                if (err) {
-                    console.log("ERRROR!", err );
-                    next(err);
-                    return;
-                }
-                processBody( body );
-            });
-        }
-    };
-
     var processBody = function (body) {
         console.log(JSON.stringify(body));
-
-        var ref = serviceRefdata++;
-
-        session.blpsess.request(service, reqName + "Request", body, ref );
-        session.blpsess.once(reqName + "Response", function(m) {
-            res.sendResponse(m);
-        })
+        session.blpsess.request( service, reqName + "Request", body, function (m) {
+            res.sendResponse( m );
+        });
     };
-    check();
 
-}
+    if (req.method === "GET") {
+        processBody( req.parsedQuery.q );
+    } else {
+        jsonBody( req, res, function (err, body) {
+            if (err) {
+                console.log("ERRROR!", err );
+                next(err);
+                return;
+            }
+            processBody( body );
+        });
+    }
+ }
 
 http.createServer(app).listen(3000);
