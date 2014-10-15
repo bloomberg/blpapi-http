@@ -1,13 +1,16 @@
 "use strict";
 
-var assert = require("assert");
-var util = require("util");
+//var assert = require("assert");
+//var util = require("util");
 var http = require('http');
 var connect = require('connect');
 var morgan = require('morgan');
 var jsonBody = require('body/json');
-var session = require("express-session");
+//var session = require("express-session");
 var dispatch = require("dispatch");
+var parseurl = require("parseurl");
+var qs = require("qs");
+var uid = require("uid-safe").sync;
 
 var blpapi = require('blpapi');
 
@@ -20,20 +23,48 @@ var app = connect();
 var serviceRefdata = 0;
 
 app.use(morgan('combined'));
-app.use(session({
-    secret: 'blumberg',
-    resave: true,
-    saveUninitialized: true,
-    store: new Store()
-}));
 
+app.use( handleSession );
 
 app.use( dispatch({
-    "POST /v1.(\\d+)/connect": onConnectV1,
+    "/v1.(\\d+)/connect": onConnectV1,
     "POST /v1.(\\d+)/request/:ns/:service/:request" : onRequestV1
 }));
 
 var V1_MINOR = 0;
+
+var g_store = {};
+
+function handleSession ( req, res, next ) {
+    var parsed = parseurl(req);
+    var query = qs.parse(parsed.query);
+
+    res.parsedQuery = query;
+    res.sendResponse = function ( obj ) {
+        if (req.session) {
+            var sessid = req.session.sessid || uid(24);
+            g_store[':'+sessid] = req.session;
+            obj.sessid = sessid;
+        }
+        var json = JSON.stringify(obj);
+        var str;
+        if (query.callback) {
+            str = query.callback + "(" + json + ");";
+            res.setHeader("content-type", "text/javascript");
+        }
+        else {
+            str = json;
+            res.setHeader("content-type", "application/json");
+        }
+        res.end(str);
+    };
+
+    var session = query.sessid && g_store[':'+query.sessid];
+    if (session)
+        req.session = session;
+
+    next();
+}
 
 function onConnectV1 (req, res, next, ver) {
     if (!(parseInt(ver) <= V1_MINOR)) {
@@ -41,12 +72,13 @@ function onConnectV1 (req, res, next, ver) {
         return;
     }
 
-    var session = req.session;
-    if (session.blpsess) {
+    if (req.session && session.blpsess) {
         console.log("already connected");
-        res.end("connected");
+        res.sendResponse( {connected:1} );
         return;
     }
+    // Create a new session
+    var session = req.session = {};
     session.services = {};
     session.blpsess = new blpapi.Session({ serverHost: hp.serverHost,
         serverPort: hp.serverPort });
@@ -54,7 +86,7 @@ function onConnectV1 (req, res, next, ver) {
 
     session.blpsess.on('SessionStarted', function(m) {
         console.log(m);
-        res.end("connected");
+        res.sendResponse( {connected:1} );
     });
 
     session.blpsess.start();
@@ -67,7 +99,7 @@ function onRequestV1 (req, res, next, ver, ns, svName, reqName) {
     }
     var session = req.session;
 
-    if (!session.blpsess) {
+    if (!session || !session.blpsess) {
         var err = "Not connected";
         next(err);
         return;
@@ -107,8 +139,7 @@ function onRequestV1 (req, res, next, ver, ns, svName, reqName) {
 
             session.blpsess.request(service, reqName + "Request", body, ref );
             session.blpsess.once(reqName + "Response", function(m) {
-                res.setHeader("content-type", "application/json");
-                res.end(JSON.stringify(m));
+                res.sendResponse(m);
             })
         });
     };
