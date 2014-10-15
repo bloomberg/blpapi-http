@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+</head>
+<body>
+    <a href="http://jquery.com/">jQuery</a>
+    <p id="updid">Sample text</p>
+    <script>
+        $( document ).ready(function() {
+            $( "a" ).click(function( event ) {
+                event.preventDefault();
+                $.ajax({
+                    url: "http://localhost:3000/v1.0/connect",
+
+                    // the name of the callback parameter, as specified by the YQL service
+                    jsonp: "callback",
+
+                    // tell jQuery we're expecting JSONP
+                    dataType: "jsonp",
+                    // work with the response
+                    success: onConnect
+                });
+            });
+        });
+
+        function onConnect ( response ) {
+            console.log(response);
+            if (response.sessid) {
+                var sessid = response.sessid;
+                $.ajax({
+                    url: "http://localhost:3000/v1.0/request/blp/refdata/HistoricalData",
+                    jsonp: "callback",
+                    dataType: "jsonp",
+
+                    data: {
+                        sessid: sessid,
+                        q: { "securities": ["IBM US Equity"],
+                            "fields": ["PX_LAST", "OPEN", "EPS_ANNUALIZED"],
+                            "startDate": "20120101",
+                            "endDate": "20120301",
+                            "periodicitySelection": "DAILY" }
+                    },
+
+                    // work with the response
+                    success: function (response) {
+                        console.log(response);
+                        $('#updid').text(JSON.stringify(response));
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

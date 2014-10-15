@@ -28,7 +28,8 @@ app.use( handleSession );
 
 app.use( dispatch({
     "/v1.(\\d+)/connect": onConnectV1,
-    "POST /v1.(\\d+)/request/:ns/:service/:request" : onRequestV1
+    "POST /v1.(\\d+)/request/:ns/:service/:request" : onRequestV1,
+    "GET /v1.(\\d+)/request/:ns/:service/:request" : onRequestGet
 }));
 
 var V1_MINOR = 0;
@@ -39,7 +40,7 @@ function handleSession ( req, res, next ) {
     var parsed = parseurl(req);
     var query = qs.parse(parsed.query);
 
-    res.parsedQuery = query;
+    req.parsedQuery = query;
     res.sendResponse = function ( obj ) {
         if (req.session) {
             var sessid = req.session.sessid || uid(24);
@@ -148,5 +149,53 @@ function onRequestV1 (req, res, next, ver, ns, svName, reqName) {
 
 }
 
+function onRequestGet (req, res, next, ver, ns, svName, reqName) {
+    if (!(parseInt(ver) <= V1_MINOR)) {
+        next();
+        return;
+    }
+    var session = req.session;
+
+    if (!session || !session.blpsess) {
+        var err = "Not connected";
+        next(err);
+        return;
+    }
+
+    var service = "//" + ns + "/" + svName;
+    var ref = serviceRefdata++;
+    var check = function () {
+        if (!(service in session.services)) {
+            console.log("Opening service", service);
+            session.blpsess.openService(service, ref);
+            session.blpsess.once('ServiceOpened', function (m) {
+                console.log(m);
+                if (m.correlations[0].value == ref) {
+                    session.services[service] = "open";
+                    opened();
+                }
+            });
+        }
+        else {
+            console.log("Using cached service", service);
+            opened();
+        }
+    };
+
+    var opened = function () {
+        var body = req.parsedQuery.q;
+        console.log(JSON.stringify(body));
+
+        var ref = serviceRefdata++;
+
+        session.blpsess.request(service, reqName + "Request", body, ref );
+        session.blpsess.once(reqName + "Response", function(m) {
+            res.sendResponse(m);
+        })
+    };
+
+    check();
+
+}
 
 http.createServer(app).listen(3000);
