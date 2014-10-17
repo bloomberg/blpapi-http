@@ -5,6 +5,7 @@
   "main": "server.js",
   "dependencies": {
     "blpapi": "^0.1.10",
+    "bluebird": "^2.3.6",
     "body": "^4.5.0",
     "connect": "^3.2.0",
     "dispatch": "^1.0.0",

@@ -1,13 +1,16 @@
 "use strict";
 
+var Promise = require("bluebird");
+
 var http = require('http');
 var connect = require('connect');
 var morgan = require('morgan');
-var jsonBody = require('body/json');
+var jsonBodyAsync = Promise.promisify( require('body/json') );
 var dispatch = require("dispatch");
 var parseurl = require("parseurl");
 var qs = require("qs");
-var uid = require("uid-safe").sync;
+var uid = require("uid-safe");
+
 
 var BAPI = require("./lib/blpapi.js");
 
@@ -46,22 +49,25 @@ function handleSession ( req, res, next ) {
 
     req.parsedQuery = query;
     res.sendResponse = function ( obj ) {
-        if (req.session) {
-            var sessid = req.session.sessid || uid(24);
-            g_store[':'+sessid] = req.session;
-            obj.sessid = sessid;
-        }
-        var json = JSON.stringify(obj);
-        var str;
-        if (query.callback) {
-            str = query.callback + "(" + json + ");";
-            res.setHeader("content-type", "text/javascript");
-        }
-        else {
-            str = json;
-            res.setHeader("content-type", "application/json");
-        }
-        res.end(str);
+        var p = Promise.resolve(undefined);
+        if (req.session)
+            p = Promise.resolve(req.session.sessid || uid(24)).then(function(sessid) {
+                g_store[':'+sessid] = req.session;
+                obj.sessid = sessid;
+            });
+        p.then(function(){
+            var json = JSON.stringify(obj);
+            var str;
+            if (query.callback) {
+                str = query.callback + "(" + json + ");";
+                res.setHeader("content-type", "text/javascript");
+            }
+            else {
+                str = json;
+                res.setHeader("content-type", "application/json");
+            }
+            res.end(str);
+        });
     };
 
     var session = query.sessid && g_store[':'+query.sessid];
@@ -87,8 +93,6 @@ function onConnect (req, res, next) {
     });
 }
 
-var serviceRefdata = 0;
-
 function onRequest (req, res, next, ns, svName, reqName) {
     var session = req.session;
 
@@ -98,9 +102,11 @@ function onRequest (req, res, next, ns, svName, reqName) {
         return;
     }
 
-    var service = "//" + ns + "/" + svName;
-    var processBody = function (body) {
+    var p = req.method == "GET" ? Promise.resolve( req.parsedQuery.q ) : jsonBodyAsync( req, res );
+
+    p.then( function(body){
         var allData = [];
+        var service = "//" + ns + "/" + svName;
         session.blpsess.request( service, reqName, body, function (err, data, last) {
             if (err)
                 return res.sendResponse( {error:1} );
@@ -109,20 +115,7 @@ function onRequest (req, res, next, ns, svName, reqName) {
             if (last)
                 res.sendResponse( allData );
         });
-    };
-
-    if (req.method === "GET") {
-        processBody( req.parsedQuery.q );
-    } else {
-        jsonBody( req, res, function (err, body) {
-            if (err) {
-                console.log("ERRROR!", err );
-                next(err);
-                return;
-            }
-            processBody( body );
-        });
-    }
+    });
  }
 
 http.createServer(app).listen(3000);
