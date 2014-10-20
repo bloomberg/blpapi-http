@@ -4,7 +4,8 @@
   "description": "bloomberg Open API HTTP Proxy",
   "main": "server.js",
   "dependencies": {
-    "blpapi": "^0.1.10"
+    "blpapi": "^0.1.10",
+    "bluebird": "^2.3.6"
   },
   "devDependencies": {},
   "scripts": {
