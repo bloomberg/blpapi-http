@@ -35,10 +35,12 @@ function onConnect (req, res, next) {
         return;
     }
     // Create a new session
-    var session = req.session = {};
-    session.blpsess = new BAPI(hp);
-    session.blpsess.start( function (err) {
-        res.sendResponse( {connected:1} );
+    var blpsess = new BAPI(hp);
+    blpsess.start().then( function (){
+      req.session = { blpsess : blpsess };
+      res.sendResponse( {connected:1} );
+    }).catch( function(err) {
+      res.sendResponse( {connected:0} );
     });
 }
 
