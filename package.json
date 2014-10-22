@@ -5,7 +5,8 @@
   "main": "server.js",
   "dependencies": {
     "blpapi": "^0.1.10",
-    "bluebird": "^2.3.6"
+    "bluebird": "^2.3.6",
+    "debug": "^2.1.0"
   },
   "devDependencies": {},
   "scripts": {
