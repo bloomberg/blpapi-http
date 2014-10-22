@@ -31,16 +31,16 @@ var hp = { serverHost: '127.0.0.1', serverPort: 8194 };
 function onConnect (req, res, next) {
     if (req.session && session.blpsess) {
         console.log("already connected");
-        res.sendResponse( {connected:1} );
+        res.sendEnd( 200, "Already connected" );
         return;
     }
     // Create a new session
     var blpsess = new BAPI(hp);
     blpsess.start().then( function (){
-      req.session = { blpsess : blpsess };
-      res.sendResponse( {connected:1} );
+        req.session = { blpsess : blpsess };
+        res.sendEnd( 200, "Connected" );
     }).catch( function(err) {
-      res.sendResponse( {connected:0} );
+        res.sendEnd( 500, "Error connecting" );
     });
 }
 
@@ -48,23 +48,21 @@ function onRequest (req, res, next, ns, svName, reqName) {
     var session = req.session;
 
     if (!session || !session.blpsess) {
-        var err = "Not connected";
-        next(err);
-        return;
+        return res.sendEnd( 401, "Not connected" );
     }
 
     var p = req.method == "GET" ? Promise.resolve( req.parsedQuery.q ) : jsonBodyAsync( req, res );
 
     p.then( function(body){
-        var allData = [];
-        var service = "//" + ns + "/" + svName;
-        session.blpsess.request( service, reqName, body, function (err, data, last) {
+        session.blpsess.request( "//" + ns + "/" + svName, reqName, body, function (err, data, last) {
             if (err)
-                return res.sendResponse( {error:1} );
-            console.log( "last=", last );
-            allData.push( data );
-            if (last)
-                res.sendResponse( allData );
+                return res.sendEnd( 500, "error" );
+            var p = res.sendChunk( data );
+            if (last) {
+                p.then(function(){
+                    res.sendEnd( 200, "OK" );
+                });
+            }
         });
     });
  }
