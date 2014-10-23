@@ -1,6 +1,7 @@
 "use strict";
 
 var Promise = require("bluebird");
+var debug = require("debug")("bprox");
 
 var http = require('http');
 var connect = require('connect');
@@ -8,7 +9,7 @@ var morgan = require('morgan');
 var jsonBodyAsync = Promise.promisify( require('body/json') );
 var dispatch = require("dispatch");
 
-var BAPI = require("./lib/blpapi.js");
+var BAPI = require("./lib/blpapi-wrapper.js");
 
 var versionCheck = require("./lib/versioncheck.js");
 var apiSession = require("./lib/api-session.js");
@@ -30,7 +31,7 @@ var hp = { serverHost: '127.0.0.1', serverPort: 8194 };
 
 function onConnect (req, res, next) {
     if (req.session && session.blpsess) {
-        console.log("already connected");
+        debug("already connected");
         res.sendEnd( 200, "Already connected" );
         return;
     }
