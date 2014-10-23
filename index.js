@@ -29,19 +29,31 @@ app.use( versionCheck( 1, 0, api1 ) );
 
 var hp = { serverHost: '127.0.0.1', serverPort: 8194 };
 
+function sendError ( res, err, where ) {
+    var status;
+    if (err.data && err.data.reason) {
+        var r = err.data.reason;
+        status = { source:r.source, category:r.category, errorCode:r.errorCode };
+    }
+    else
+        status = {}
+    res.sendEnd( status, err.message || where, 401 );
+}
+
 function onConnect (req, res, next) {
     if (req.session && session.blpsess) {
         debug("already connected");
-        res.sendEnd( 200, "Already connected" );
+        res.sendEnd( 0, "Already connected" );
         return;
     }
     // Create a new session
     var blpsess = new BAPI(hp);
     blpsess.start().then( function (){
         req.session = { blpsess : blpsess };
-        res.sendEnd( 200, "Connected" );
+        res.sendEnd( 0, "Connected" );
     }).catch( function(err) {
-        res.sendEnd( 500, "Error connecting" );
+        debug("error connecting:", err);
+        sendError( res, err, "Error connecting" );
     });
 }
 
@@ -49,19 +61,21 @@ function onRequest (req, res, next, ns, svName, reqName) {
     var session = req.session;
 
     if (!session || !session.blpsess) {
-        return res.sendEnd( 401, "Not connected" );
+        return sendError( res, {}, "Not connected" );
     }
 
     var p = req.method == "GET" ? Promise.resolve( req.parsedQuery.q ) : jsonBodyAsync( req, res );
 
     p.then( function(body){
         session.blpsess.request( "//" + ns + "/" + svName, reqName, body, function (err, data, last) {
-            if (err)
-                return res.sendEnd( 500, err.message || "error" );
+            if (err){
+                debug("request error:", err);
+                return sendError( res, err, "Request error" );
+            }
             var p = res.sendChunk( data );
             if (last) {
                 p.then(function(){
-                    res.sendEnd( 200, "OK" );
+                    res.sendEnd( 0, "OK" );
                 });
             }
         });
