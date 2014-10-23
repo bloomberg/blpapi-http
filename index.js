@@ -57,7 +57,7 @@ function onRequest (req, res, next, ns, svName, reqName) {
     p.then( function(body){
         session.blpsess.request( "//" + ns + "/" + svName, reqName, body, function (err, data, last) {
             if (err)
-                return res.sendEnd( 500, "error" );
+                return res.sendEnd( 500, err.message || "error" );
             var p = res.sendChunk( data );
             if (last) {
                 p.then(function(){
