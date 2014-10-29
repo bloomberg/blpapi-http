@@ -75,7 +75,7 @@ function onRequest (req, res, next, ns, svName, reqName) {
             var p = res.sendChunk( data );
             if (last) {
                 p.then(function(){
-                    res.sendEnd( 0, "OK" );
+                    return res.sendEnd( 0, "OK" );
                 });
             }
         });
