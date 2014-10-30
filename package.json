@@ -1,7 +1,7 @@
 {
   "name": "blpapi-http",
   "version": "0.0.0",
-  "description": "bloomberg Open API HTTP Proxy",
+  "description": "Bloomberg Open API HTTP Proxy",
   "main": "server.js",
   "dependencies": {
     "blpapi": "^0.1.10",
@@ -25,11 +25,11 @@
     "url": "http://github.com/bloomberg/blpapi-http"
   },
   "keywords": [
-    "bloomberg",
+    "Bloomberg",
     "Open API",
     "blpapi"
   ],
-  "author": "bloomberg LP",
+  "author": "Bloomberg LP",
   "contributors": [
     "Tzvetan Mikov <tmikov@gmail.com>",
     "Eric N. Vander Weele <ericvw@gmail.com>"
