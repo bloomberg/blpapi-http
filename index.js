@@ -14,6 +14,12 @@ var BAPI = require("./lib/blpapi-wrapper.js");
 var versionCheck = require("./lib/versioncheck.js");
 var apiSession = require("./lib/api-session.js");
 
+try {
+    var conf = require('./lib/config.js');
+} catch(ex) {
+    console.log(ex.message);
+    process.exit(1);
+}
 var app = connect();
 
 app.use(morgan('combined'));
@@ -27,7 +33,7 @@ api1.use( dispatch({
 
 app.use( versionCheck( 1, 0, api1 ) );
 
-var hp = { serverHost: '127.0.0.1', serverPort: 8194 };
+var hp = { serverHost: conf.get('api.host'), serverPort: conf.get('api.port') };
 
 function sendError ( res, err, where ) {
     var status;
@@ -82,4 +88,10 @@ function onRequest (req, res, next, ns, svName, reqName) {
     });
  }
 
-http.createServer(app).listen(3000);
+ var server = http.createServer(app);
+ server.on('error', function (ex) {
+     console.error(ex.message);
+     process.exit(1);
+ });
+
+ server.listen(conf.get('port'));
