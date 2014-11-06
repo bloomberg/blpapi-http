@@ -88,4 +88,10 @@ function onRequest (req, res, next, ns, svName, reqName) {
     });
  }
 
-http.createServer(app).listen(3000);
+ var server = http.createServer(app);
+ server.on('error', function (ex) {
+     console.error(ex.message);
+     process.exit(1);
+ });
+
+ server.listen(conf.get('port'));
