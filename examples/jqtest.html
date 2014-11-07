@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+</head>
+<body>
+    <a href="#" id="ask">Request</a>
+    <br/>
+    <a href="#" id="clear">Clear</a>
+    <p id="updid">Sample text</p>
+    <script>
+        var sessid = void 0;
+        $( document ).ready(function() {
+            $( "#clear" ).click(function( event ) {
+                event.preventDefault();
+                $("#updid").text("cleared");
+            });
+            $( "#ask" ).click(function( event ) {
+                event.preventDefault();
+                if (sessid)
+                    requestData();
+                else
+                    $.ajax({
+                        url: "http://localhost:3000/v1.0/connect",
+
+                        // the name of the callback parameter, as specified by the YQL service
+                        jsonp: "jpcb",
+
+                        // tell jQuery we're expecting JSONP
+                        dataType: "jsonp",
+                        // work with the response
+                        success: function ( response ) {
+                            console.log(response);
+                            if (response.sessid) {
+                                sessid = response.sessid;
+                                requestData();
+                            }
+                        }
+                    });
+            });
+        });
+
+        function requestData (){
+            $.ajax({
+                url: "http://localhost:3000/v1.0/request/blp/refdata/HistoricalData",
+                jsonp: "jpcb",
+                dataType: "jsonp",
+
+                data: {
+                    sessid: sessid,
+                    q: { "securities": ["IBM US Equity"],
+                        "fields": ["PX_LAST", "OPEN", "EPS_ANNUALIZED"],
+                        "startDate": "20120101",
+                        "endDate": "20120301",
+                        "periodicitySelection": "DAILY" }
+                },
+
+                // work with the response
+                success: function (response) {
+                    console.log(response);
+                    $('#updid').append(document.createTextNode(JSON.stringify(response)));
+                },
+            });
+        }
+    </script>
+</body>
+</html>
