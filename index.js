@@ -3,6 +3,7 @@
 var Promise = require("bluebird");
 var debugMod = require("debug");
 
+var assert = require("assert");
 var http = require('http');
 var connect = require('connect');
 var morgan = require('morgan');
@@ -39,6 +40,29 @@ app.use( versionCheck( 1, 0, api1 ) );
 
 var hp = { serverHost: conf.get('api.host'), serverPort: conf.get('api.port') };
 
+function Session(req, blpsess) {
+    assert( this instanceof Session );
+    this.blpsess = blpsess;
+    this.inUse = 0;
+    debug( "Created new session for client", req.clientIp );
+}
+
+Session.prototype.expire = function () {
+    if (this.inUse)
+        return false;
+
+    if (this.blpsess){
+        var blpsess = this.blpsess;
+        this.blpsess = null;
+        blpsess.stop().then( function(){
+            debug( "stopped blpsess" );
+        }).catch( function(err) {
+            error( "blpsess.stop error", err.message );
+        });
+    }
+    return true;
+}
+
 function onConnect (req, res, next) {
     if (req.session && session.blpsess) {
         debug("already connected");
@@ -48,7 +72,7 @@ function onConnect (req, res, next) {
     // Create a new session
     var blpsess = new BAPI(hp);
     blpsess.start().then( function (){
-        req.session = { blpsess : blpsess };
+        req.session = new Session(req, blpsess);
         res.sendEnd( 0, "Connected" );
     }).catch( function(err) {
         debug("error connecting:", err);
