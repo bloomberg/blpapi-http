@@ -1,0 +1,45 @@
+{
+  "name": "blpapi-http",
+  "version": "0.0.0",
+  "description": "Bloomberg Open API HTTP Proxy",
+  "main": "server.js",
+  "dependencies": {
+    "blpapi": "^0.1.10",
+    "bluebird": "^2.3.6",
+    "body": "^4.5.0",
+    "connect": "^3.2.0",
+    "convict": "^0.5.1",
+    "debug": "^2.1.0",
+    "dispatch": "^1.0.0",
+    "express-session": "^1.8.2",
+    "ipware": "0.0.2",
+    "morgan": "^1.3.2",
+    "optimist": "^0.6.1",
+    "parseurl": "^1.3.0",
+    "qs": "^2.2.4",
+    "uid-safe": "^1.0.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/bloomberg/blpapi-http"
+  },
+  "keywords": [
+    "Bloomberg",
+    "Open API",
+    "blpapi"
+  ],
+  "author": "Bloomberg LP",
+  "contributors": [
+    "Tzvetan Mikov <tmikov@gmail.com>",
+    "Eric N. Vander Weele <ericvw@gmail.com>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "http://github.com/bloomberg/blpapi-http/issues"
+  },
+  "homepage": "http://github.com/bloomberg/blpapi-http"
+}
