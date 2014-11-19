@@ -1,39 +1,55 @@
-"use strict";
+/// <reference path="../typings/tsd.d.ts" />
 
-var assert = require("assert")
+import assert = require("assert");
+import http = require("http");
 
-var Promise = require('bluebird');
+import Promise = require('bluebird');
 var uid = require("uid-safe");
 var parseurl = require("parseurl");
 var qs = require("qs");
-var ipware = require("ipware")();
+var ipwareMod = require("ipware");
+var ipware = ipwareMod();
 
-var config = require("./config.js");
-var SessionStore = require("./SessionStore.js");
+var config = require("../lib/config.js");
+import SessionStore = require("./SessionStore");
 
-function stringifyPair ( key, value ) {
+function stringifyPair ( key: string, value: any ): string {
     return "\"" + key.replace(/"/g, "\\$&") + "\":" + JSON.stringify(value);
 }
 
-module.exports = function () {
-    var g_store = new SessionStore(config.get('expiration'));
+export interface OurRequest extends http.ServerRequest
+{
+    parsedQuery?: any;
+    session?: any;
+    clientIp?: string;
+    clientIpRoutable?: boolean;
+}
 
-    return function handleSession ( req, res, next ) {
+export interface OurResponse extends http.ServerResponse
+{
+    sendChunk?: (data: any) => Promise<any>;
+    sendEnd?: (status: any, message: string) => Promise<any>;
+    sendError?: (err: any, where: string, reason?: any) => Promise<any>;
+}
+
+export function makeHandler (): (req: OurRequest, res: OurResponse, next: Function )=>void
+{
+    var g_store = new SessionStore<any>(config.get('expiration'));
+
+    return function handleSession ( req: OurRequest, res: OurResponse, next: Function ): void {
         var parsed = parseurl(req);
         var parsedQuery = qs.parse(parsed.query);
 
-        var chunkIndex = 0;
-        var useJsonp = !!parsedQuery.jpcb;
-        var chunk; // the current chunk string is assembled here
-        var needComma = false; // need to append a ',' before adding more data
-
-        var pendingPromise = null;
+        var chunkIndex: number = 0;
+        var useJsonp: boolean = !!parsedQuery.jpcb;
+        var chunk: string; // the current chunk string is assembled here
+        var needComma: boolean = false; // need to append a ',' before adding more data
 
         req.parsedQuery = parsedQuery;
 
         // returns a promise
-        function prepareSession () {
-            var resultP = undefined;
+        function prepareSession (): Promise<any> {
+            var resultP: Promise<any> = undefined;
             // Before sending the first chunk we must take care of the session id and set the content
             // type
             if (++chunkIndex == 1) {
@@ -60,7 +76,7 @@ module.exports = function () {
             return resultP || Promise.resolve(undefined);
         };
 
-        res.sendChunk = function ( data ) {
+        res.sendChunk = function ( data ): Promise<any> {
             var p = prepareSession();
             return p.then(function(){
                 if (chunkIndex == 1) {
@@ -77,7 +93,7 @@ module.exports = function () {
             });
         };
 
-        res.sendEnd = function(status, message) {
+        res.sendEnd = function(status, message): Promise<any> {
             var p = prepareSession();
             return p.then(function(){
                 // If this is the only chunk, we can set the http status
@@ -100,8 +116,8 @@ module.exports = function () {
             });
         };
 
-        res.sendError = function(err,where,reason) {
-            var status;
+        res.sendError = function(err,where,reason): Promise<any> {
+            var status: { source: string; category: string; errorCode: number};
             var r = err.data && err.data.reason;
             if (r)
                 status = { source:r.source, category:r.category, errorCode:r.errorCode };
@@ -109,13 +125,13 @@ module.exports = function () {
                 status = { source:"BProx", category:reason.category, errorCode:-1 };
             else
                 status = { source:"BProx", category:"UNCLASSIFIED", errorCode:-1 };
-            res.sendEnd( status, err.message || where );
+            return res.sendEnd( status, err.message || where );
         }
 
         // Monkey-patch response.end() to track the lifetime of the response
         var savedEnd = res.end;
-        res.end = function( data, encoding ) {
-            savedEnd.call( res, data, encoding );
+        res.end = function( data?:any, encoding?:any, cb?:any ) {
+            savedEnd.call( res, data, encoding, cb );
             if (session)
                 --session.inUse;
         }

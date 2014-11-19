@@ -1,19 +1,19 @@
-"use strict";
+/// <reference path="typings/tsd.d.ts" />
 
-var Promise = require("bluebird");
-var debugMod = require("debug");
+import Promise = require("bluebird");
+import debugMod = require("debug");
 
-var assert = require("assert");
-var http = require('http');
+import assert = require("assert");
+import http = require('http');
 var connect = require('connect');
-var morgan = require('morgan');
+import morgan = require('morgan');
 var jsonBodyAsync = Promise.promisify( require('body/json') );
 var dispatch = require("dispatch");
 
 var BAPI = require("./lib/blpapi-wrapper.js");
 
 var versionCheck = require("./lib/versioncheck.js");
-var apiSession = require("./lib/api-session.js");
+import apiSession = require("./tslib/api-session");
 
 var debug = debugMod("bprox:debug");
 var info = debugMod("bprox:info");
@@ -30,7 +30,7 @@ var app = connect();
 app.use(morgan('combined'));
 
 var api1 = connect();
-api1.use( apiSession() );
+api1.use( apiSession.makeHandler() );
 api1.use( dispatch({
     "/connect": onConnect,
     "/request/:ns/:service/:request" : onRequest
@@ -40,57 +40,66 @@ app.use( versionCheck( 1, 0, api1 ) );
 
 var hp = { serverHost: conf.get('api.host'), serverPort: conf.get('api.port') };
 
-function Session(req, blpsess) {
-    assert( this instanceof Session );
-    this.blpsess = blpsess;
-    this.inUse = 0;
-    debug( "Created new session for client", req.clientIp );
-}
+class Session
+{
+    inUse: number = 0;
 
-Session.prototype.expire = function () {
-    if (this.inUse)
-        return false;
-
-    if (this.blpsess){
-        var blpsess = this.blpsess;
-        this.blpsess = null;
-        blpsess.stop().then( function(){
-            debug( "stopped blpsess" );
-        }).catch( function(err) {
-            error( "blpsess.stop error", err.message );
-        });
+    constructor ( req: apiSession.OurRequest, public blpsess: any )
+    {
+        debug( "Created new session for client", req.clientIp );
     }
-    return true;
+
+    expire(): boolean
+    {
+        if (this.inUse)
+            return false;
+
+        if (this.blpsess){
+            var blpsess = this.blpsess;
+            this.blpsess = null;
+            blpsess.stop().then( function(){
+                debug( "stopped blpsess" );
+            }).catch( function(err: Error) {
+                error( "blpsess.stop error", err.message );
+            });
+        }
+        return true;
+    }
 }
 
-function onConnect (req, res, next) {
-    if (req.session && session.blpsess) {
+
+function onConnect (req: apiSession.OurRequest, res: apiSession.OurResponse, next: Function): void {
+    if (req.session && req.session.blpsess) {
         debug("already connected");
         res.sendEnd( 0, "Already connected" );
         return;
     }
     // Create a new session
     var blpsess = new BAPI(hp);
-    blpsess.start().then( function (){
+    blpsess.start().then( function (): Promise<any> {
         req.session = new Session(req, blpsess);
-        res.sendEnd( 0, "Connected" );
-    }).catch( function(err) {
+        return res.sendEnd( 0, "Connected" );
+    }).catch( function(err: Error) {
         debug("error connecting:", err);
-        res.sendError( err, "Error connecting" );
+        return res.sendError( err, "Error connecting" );
     });
 }
 
-function onRequest (req, res, next, ns, svName, reqName) {
-    var session = req.session;
+function onRequest (
+  req: apiSession.OurRequest, res: apiSession.OurResponse, next: Function,
+  ns: string, svName: string, reqName: string
+)
+{
+    var session: Session = req.session;
 
     if (!session || !session.blpsess) {
         return res.sendError( {}, "Not connected", {category:"NO_AUTH"} );
     }
 
-    var p = req.method == "GET" ? Promise.resolve( req.parsedQuery.q ) : jsonBodyAsync( req, res );
+    var p: Promise<any> = req.method == "GET" ? Promise.resolve( req.parsedQuery.q ) : jsonBodyAsync( req, res );
 
-    p.then( function(body){
-        session.blpsess.request( "//" + ns + "/" + svName, reqName, body, function (err, data, last) {
+    p.then( function(body: any){
+        session.blpsess.request( "//" + ns + "/" + svName, reqName, body, function (err: Error, data: any, last: boolean) {
             if (err){
                 debug("request error:", err);
                 return res.sendError( err, "Request error", {category:"BAD_ARGS"} );
@@ -108,7 +117,7 @@ function onRequest (req, res, next, ns, svName, reqName) {
  }
 
  var server = http.createServer(app);
- server.on('error', function (ex) {
+ server.on('error', function (ex: Error) {
      console.error(ex.message);
      process.exit(1);
  });
