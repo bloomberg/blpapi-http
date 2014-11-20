@@ -10,7 +10,7 @@ import morgan = require('morgan');
 var jsonBodyAsync = Promise.promisify( require('body/json') );
 var dispatch = require("dispatch");
 
-var BAPI = require("./lib/blpapi-wrapper.js");
+import BAPI = require("./tslib/blpapi-wrapper");
 
 var versionCheck = require("./lib/versioncheck.js");
 import apiSession = require("./tslib/api-session");
@@ -44,7 +44,7 @@ class Session
 {
     inUse: number = 0;
 
-    constructor ( req: apiSession.OurRequest, public blpsess: any )
+    constructor ( req: apiSession.OurRequest, public blpsess: BAPI.Session )
     {
         debug( "Created new session for client", req.clientIp );
     }
@@ -75,7 +75,7 @@ function onConnect (req: apiSession.OurRequest, res: apiSession.OurResponse, nex
         return;
     }
     // Create a new session
-    var blpsess = new BAPI(hp);
+    var blpsess = new BAPI.Session(hp);
     blpsess.start().then( function (): Promise<any> {
         req.session = new Session(req, blpsess);
         return res.sendEnd( 0, "Connected" );

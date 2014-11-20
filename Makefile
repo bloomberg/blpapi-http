@@ -3,7 +3,7 @@ SRCS_JS_FROM_TS =
 
 TOP_LEVEL_TS_FILE = index.ts
 
-SRCS_TS += $(wildcard *.ts)
+SRCS_TS += index.ts
 SRCS_TS += $(wildcard tslib/*.ts)
 
 SRCS_JS_FROM_TS += $(patsubst %.ts,%.js,$(SRCS_TS))
