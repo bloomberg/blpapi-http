@@ -25,7 +25,6 @@
         "no-use-before-declare": true,
         "one-line": [true,
             "check-catch",
-            "check-open-brace",
             "check-whitespace"
         ],
         "quotemark": [true, "single"],
@@ -35,14 +34,15 @@
         "use-strict": [true,
             "check-module"
         ],
-        "variable-name": [true],
+        "variable-name": [true,
+            "allow-leading-underscore"
+        ],
         "whitespace": [true,
             "check-branch",
             "check-decl",
             "check-operator",
             "check-separator",
-            "check-type",
-            "check-typecast"
+            "check-type"
         ]
 
     }

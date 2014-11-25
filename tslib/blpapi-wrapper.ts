@@ -1,4 +1,5 @@
 /// <reference path="../typings/tsd.d.ts" />
+'use strict';
 
 import assert = require('assert');
 import events = require('events');
@@ -18,7 +19,7 @@ export interface RequestCallback {
 
 export class BlpApiError implements Error {
     // STATIC DATA
-    static name: string = "BlpApiErorr";
+    static NAME: string = 'BlpApiErorr';
 
     // DATA
     data: any;
@@ -26,7 +27,7 @@ export class BlpApiError implements Error {
     message: string;
     constructor(data: any) {
         this.data = data;
-        this.name = BlpApiError.name;
+        this.name = BlpApiError.NAME;
         this.message = data.reason.description;
     }
 }
@@ -46,7 +47,7 @@ export class Session extends events.EventEmitter {
     // DATA
     private session: blpapi.Session;
     // TODO: figure out how to declare object types
-    private _listeners: {[index: string]: any} = {};
+    private eventListeners: {[index: string]: any} = {};
     private requests: {[index: string]: RequestCallback} = {};
     private services: {[index: string]: Promise<void>} = {};
     private correlatorId: number = 0;
@@ -54,25 +55,25 @@ export class Session extends events.EventEmitter {
 
     // PRIVATE MANIPULATORS
     private listen(eventName: string, expectedId: number, handler: Function) {
-        if (!(eventName in this._listeners)) {
-            trace(util.format("'%s' listener added", eventName));
+        if (!(eventName in this.eventListeners)) {
+            trace(util.format('\'%s\' listener added', eventName));
             this.session.on(eventName, (function(eventName: string, m: any) {
                 trace(m);
                 var correlatorId = m.correlations[0].value;
-                this._listeners[eventName][correlatorId](m);
+                this.eventListeners[eventName][correlatorId](m);
             }).bind(this, eventName));
 
-            this._listeners[eventName] = {};
+            this.eventListeners[eventName] = {};
         }
-        this._listeners[eventName][expectedId] = handler;
+        this.eventListeners[eventName][expectedId] = handler;
     }
 
     private unlisten(eventName: string, correlatorId: number) {
-        delete this._listeners[eventName][correlatorId]
-        if (isObjectEmpty(this._listeners[eventName])) {
-            trace(util.format("'%s' listener removed ", eventName));
+        delete this.eventListeners[eventName][correlatorId];
+        if (isObjectEmpty(this.eventListeners[eventName])) {
+            trace(util.format('\'%s\' listener removed ', eventName));
             this.session.removeAllListeners(eventName);
-            delete this._listeners[eventName];
+            delete this.eventListeners[eventName];
         }
     }
 
@@ -94,10 +95,10 @@ export class Session extends events.EventEmitter {
         trace(ev);
 
         // clean up listeners
-        Object.getOwnPropertyNames(this._listeners).forEach((eventName) => {
+        Object.getOwnPropertyNames(this.eventListeners).forEach((eventName) => {
             this.session.removeAllListeners(eventName);
         });
-        this._listeners = {};
+        this.eventListeners = {};
 
         // tear down the session
         this.session.destroy();
@@ -174,21 +175,21 @@ export class Session extends events.EventEmitter {
             this.session.openService(uri, openServiceId);
 
             this.listen('ServiceOpened', openServiceId, (ev: any) => {
-                this.unlisten('ServiceOpened', openServiceId)
+                this.unlisten('ServiceOpened', openServiceId);
                 this.unlisten('ServiceOpenFailure', openServiceId);
                 resolve();
             });
 
             this.listen('ServiceOpenFailure', openServiceId, (ev: any) => {
-                this.unlisten('ServiceOpened', openServiceId)
+                this.unlisten('ServiceOpened', openServiceId);
                 this.unlisten('ServiceOpenFailure', openServiceId);
-                delete this.services[uri]
+                delete this.services[uri];
                 reject(new BlpApiError(ev.data));
             });
         }).bind(this); // end 'new Promise'
 
         thenable.then(() => {
-            var responseEventName = name + 'Response'
+            var responseEventName = name + 'Response';
             var correlatorId = this.correlatorId++;
             this.session.request(uri, name + 'Request', request, correlatorId);
             this.listen(responseEventName,

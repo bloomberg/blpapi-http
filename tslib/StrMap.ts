@@ -4,7 +4,7 @@ export = StrMap;
 
 class StrMap<T> {
     private _size: number = 0;
-    private _map:{[key: string]: T} = {};
+    private _map: {[key: string]: T} = {};
 
     get size(): number { return this._size; }
 
@@ -15,8 +15,9 @@ class StrMap<T> {
 
     set( key: string, val: T ): void  {
       var mkey = mangle(key);
-      if (!(mkey in this._map))
+      if (!(mkey in this._map)) {
         ++this._size;
+      }
       this._map[mkey] = val;
     }
 
@@ -28,30 +29,34 @@ class StrMap<T> {
       return mangle(key) in this._map;
     }
 
-    delete ( key:string ): void {
+    delete ( key: string ): void {
       var mkey = mangle(key);
-      if (mkey in this._map)
+      if (mkey in this._map) {
         --this._size;
+      }
       delete this._map[mkey];
     }
 
     keys (): string[] {
       var res: string[] = [];
-      for ( var t in this._map )
+      for ( var t in this._map ) {
         res.push( demangle(t) );
+      }
       return res;
     }
 
     values (): T[] {
       var res: T[] = [];
-      for ( var t in this._map )
+      for ( var t in this._map ) {
         res.push( this._map[t] );
+      }
       return res;
     }
 
     forEach ( callbackFn: (val: T, key: string, map: StrMap<T> ) => void, thisArg?: any ): void {
-      for ( var mkey in this._map )
+      for ( var mkey in this._map ) {
         callbackFn.call( thisArg, this._map[mkey], demangle(mkey), this );
+      }
     }
 }
 

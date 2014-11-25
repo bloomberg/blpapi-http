@@ -1,20 +1,18 @@
-/// <reference path="../typings/tsd.d.ts" />
+/// <reference path='../typings/tsd.d.ts' />
 
-import debugMod = require("debug");
-import util = require("util");
-import StrMap = require("./StrMap");
-import List = require("./List");
+import debugMod = require('debug');
+import util = require('util');
+import StrMap = require('./StrMap');
+import List = require('./List');
 
-var debug = debugMod("session:debug");
-var warn = debugMod("session:warn");
+var debug = debugMod('session:debug');
+var warn = debugMod('session:warn');
 
-function curSeconds ()
-{
+function curSeconds () {
     return process.hrtime()[0];
 }
 
-class Entry<T>
-{
+class Entry<T> {
     prev: Entry<T>;
     next: Entry<T>;
     key: any;
@@ -26,8 +24,7 @@ class Entry<T>
     }
 }
 
-interface Expirable
-{
+interface Expirable {
     expire?(): boolean;
 }
 
@@ -50,20 +47,25 @@ constructor (expirationSeconds: number) {
 expireSessions (): void
 {
     var seconds = curSeconds();
-    for ( var prev: Entry<T>, entry = this.mru.last();
-          entry && seconds - entry.seconds >= this.expirationSeconds;
-          entry = prev )
+    for (var prev: Entry<T>, entry = this.mru.last();
+         entry && seconds - entry.seconds >= this.expirationSeconds;
+         entry = prev)
+    /* tslint:disable:one-line */
+    // TODO: raise issue with tslint
     {
+    /* tslin:enable:one-line */
         prev = entry.prev;
-        if (!this.forceExpire( entry.key ))
+        if (!this.forceExpire( entry.key )) {
             this.renew( entry ); // prevent expiration for some time
+        }
     }
 }
 
 private renew(entry: Entry<T>): void
 {
-    if (entry != this.mru.first())
+    if (entry !== this.mru.first()) {
         this.mru.addFirst( this.mru.remove( entry ) );
+    }
     entry.seconds = curSeconds();
 }
 
@@ -74,11 +76,11 @@ private forceExpire(key: any): boolean {
             this.map.delete(key);
             this.mru.remove(entry);
             entry.data = null;
-            debug("Expired session %s", key);
+            debug('Expired session %s', key);
             return true;
+        } else {
+            warn('Session %s could not be expired', key );
         }
-        else
-            warn("Session %s could not be expired", key );
     }
     return false;
 }
@@ -88,9 +90,9 @@ set(key: any, val: T): void {
     if ( (entry = this.map.get(key)) ) {
         this.mru.remove( entry );
         entry.data = val;
-    }
-    else
+    } else {
         entry = new Entry( val );
+    }
 
     entry.seconds = curSeconds();
     entry.key = key;
