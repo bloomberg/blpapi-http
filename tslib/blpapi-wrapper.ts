@@ -47,7 +47,7 @@ export class Session extends events.EventEmitter {
     // DATA
     private session: blpapi.Session;
     // TODO: figure out how to declare object types
-    private eventListeners: {[index: string]: any} = {};
+    private eventListeners: {[index: string]: {[index: number]: Function}} = {};
     private requests: {[index: string]: RequestCallback} = {};
     private services: {[index: string]: Promise<void>} = {};
     private correlatorId: number = 0;
