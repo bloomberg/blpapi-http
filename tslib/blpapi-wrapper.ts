@@ -52,6 +52,7 @@ export class Session extends events.EventEmitter {
     private services: {[index: string]: Promise<void>} = {};
     private correlatorId: number = 0;
     private requestId: number = 0;
+    private stopped: Promise<void> = null;
 
     // PRIVATE MANIPULATORS
     private listen(eventName: string, expectedId: number, handler: Function) {
@@ -100,15 +101,19 @@ export class Session extends events.EventEmitter {
         });
         this.eventListeners = {};
 
-        // tear down the session
-        this.session.destroy();
-        this.session = null;
-
         // notify pending requests that the session has been terminated
         Object.getOwnPropertyNames(this.requests).forEach((key) => {
             this.requests[key](new Error('session terminated'));
         });
         this.requests = {};
+
+        if (!this.stopped) {
+            this.stopped = Promise.resolve();
+        }
+
+        // tear down the session
+        this.session.destroy();
+        this.session = null;
 
         // emit event to any listeners
         this.emit('SessionTerminated', ev.data);
@@ -125,7 +130,7 @@ export class Session extends events.EventEmitter {
 
     // MANIPULATORS
     start(cb?: (err: any, value: any) => void): Promise<void> {
-        if (null === this.session) {
+        if (this.stopped) {
             throw new Error('session terminated');
         }
 
@@ -148,9 +153,8 @@ export class Session extends events.EventEmitter {
     }
 
     stop(cb?: (err: any, value: any) => void): Promise<void> {
-        return (null === this.session) ? Promise.resolve()
-                                       : new Promise<void>((resolve: Function,
-                                                            reject: Function) => {
+        return this.stopped = this.stopped ||
+                              new Promise<void>((resolve: Function, reject: Function) => {
             this.session.stop();
             this.session.once('SessionTerminated', (ev: any) => {
                 // TODO: must a promise when resolved produce a value?
@@ -159,8 +163,8 @@ export class Session extends events.EventEmitter {
         }).nodeify(cb);
     }
 
-    request(uri: string, name: string, request: any, callback: RequestCallback) : void {
-        if (null === this.session) {
+    request(uri: string, name: string, request: any, callback: RequestCallback): void {
+        if (this.stopped) {
             return process.nextTick(callback.bind(null, new Error('session terminated')));
         }
 
