@@ -27,3 +27,4 @@ curl $OPTS -X POST $HOST/v1.0/request/blp/refdata/HistoricalData?sessid=$sessid 
             "endDate": "20120301",
             "periodicitySelection": "DAILY" }
 EOF
+echo
