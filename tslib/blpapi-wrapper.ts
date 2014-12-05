@@ -3,7 +3,7 @@
 
 import assert = require('assert');
 import events = require('events');
-import util = require ('util');
+import util = require('util');
 
 import blpapi = require('blpapi');
 import Promise = require('bluebird');
@@ -11,6 +11,7 @@ import debug = require('debug');
 
 // LOGGING
 var trace = debug('blpapi-wrapper:trace');
+var log = debug('blpapi-wrapper:debug');
 
 // TYPES
 export interface RequestCallback {
@@ -57,9 +58,8 @@ export class Session extends events.EventEmitter {
     // PRIVATE MANIPULATORS
     private listen(eventName: string, expectedId: number, handler: Function) {
         if (!(eventName in this.eventListeners)) {
-            trace(util.format('\'%s\' listener added', eventName));
+            trace('Listener added: ' + eventName);
             this.session.on(eventName, (function(eventName: string, m: any) {
-                trace(m);
                 var correlatorId = m.correlations[0].value;
                 this.eventListeners[eventName][correlatorId](m);
             }).bind(this, eventName));
@@ -72,7 +72,7 @@ export class Session extends events.EventEmitter {
     private unlisten(eventName: string, correlatorId: number) {
         delete this.eventListeners[eventName][correlatorId];
         if (isObjectEmpty(this.eventListeners[eventName])) {
-            trace(util.format('\'%s\' listener removed ', eventName));
+            trace('Listener removed: ' + eventName);
             this.session.removeAllListeners(eventName);
             delete this.eventListeners[eventName];
         }
@@ -81,6 +81,12 @@ export class Session extends events.EventEmitter {
     private requestHandler(cb: RequestCallback, requestId: number, m: any) {
         var eventType = m.eventType;
         var isFinal = (EVENT_TYPE.RESPONSE === eventType);
+
+        log(util.format('Response: %s|%d|%s',
+                        m.messageType,
+                        m.correlations[0].value,
+                        eventType));
+        trace(m);
 
         cb(null, m.data, isFinal);
 
@@ -93,6 +99,7 @@ export class Session extends events.EventEmitter {
     }
 
     private sessionTerminatedHandler(ev: any) {
+        log('Session terminating');
         trace(ev);
 
         // clean up listeners
@@ -117,6 +124,7 @@ export class Session extends events.EventEmitter {
 
         // emit event to any listeners
         this.emit('SessionTerminated', ev.data);
+        log('Session terminated');
     }
 
 
@@ -126,6 +134,8 @@ export class Session extends events.EventEmitter {
 
         this.session = new blpapi.Session(opts);
         this.session.once('SessionTerminated', this.sessionTerminatedHandler.bind(this));
+        log('Session created');
+        trace(opts);
     }
 
     // MANIPULATORS
@@ -134,7 +144,8 @@ export class Session extends events.EventEmitter {
             throw new Error('session terminated');
         }
 
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve: Function, reject: Function) => {
+            trace('Starting session');
             this.session.start();
 
             var listener = (listenerName: string, handler: Function, ev: any) => {
@@ -143,10 +154,16 @@ export class Session extends events.EventEmitter {
             };
 
             this.session.once('SessionStarted',
-                              listener.bind(this, 'SessionStartupFailure', resolve));
+                              listener.bind(this, 'SessionStartupFailure', (data: any) => {
+                                  log('Session started');
+                                  trace(data);
+                                  resolve();
+                              }));
 
             this.session.once('SessionStartupFailure',
                               listener.bind(this, 'SessionStarted', (data: any) => {
+                                  log('Session start failure');
+                                  trace(data);
                                   reject(new BlpApiError(data));
                               }));
         }).nodeify(cb);
@@ -155,6 +172,7 @@ export class Session extends events.EventEmitter {
     stop(cb?: (err: any, value: any) => void): Promise<void> {
         return this.stopped = this.stopped ||
                               new Promise<void>((resolve: Function, reject: Function) => {
+            log('Stopping session');
             this.session.stop();
             this.session.once('SessionTerminated', (ev: any) => {
                 // TODO: must a promise when resolved produce a value?
@@ -195,7 +213,10 @@ export class Session extends events.EventEmitter {
         thenable.then(() => {
             var responseEventName = name + 'Response';
             var correlatorId = this.correlatorId++;
-            this.session.request(uri, name + 'Request', request, correlatorId);
+            var requestName = name + 'Request';
+            log(util.format('Request: %s|%d', requestName, correlatorId));
+            trace(request);
+            this.session.request(uri, requestName, request, correlatorId);
             this.listen(responseEventName,
                         correlatorId,
                         this.requestHandler.bind(this, callback, requestId));
