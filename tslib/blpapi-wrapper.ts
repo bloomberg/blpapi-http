@@ -47,7 +47,6 @@ function isObjectEmpty(obj: Object) {
 export class Session extends events.EventEmitter {
     // DATA
     private session: blpapi.Session;
-    // TODO: figure out how to declare object types
     private eventListeners: {[index: string]: {[index: number]: Function}} = {};
     private requests: {[index: string]: RequestCallback} = {};
     private services: {[index: string]: Promise<void>} = {};
@@ -59,7 +58,7 @@ export class Session extends events.EventEmitter {
     private listen(eventName: string, expectedId: number, handler: Function) {
         if (!(eventName in this.eventListeners)) {
             trace('Listener added: ' + eventName);
-            this.session.on(eventName, (function(eventName: string, m: any) {
+            this.session.on(eventName, ((eventName: string, m: any) => {
                 var correlatorId = m.correlations[0].value;
                 this.eventListeners[eventName][correlatorId](m);
             }).bind(this, eventName));
@@ -175,7 +174,6 @@ export class Session extends events.EventEmitter {
             log('Stopping session');
             this.session.stop();
             this.session.once('SessionTerminated', (ev: any) => {
-                // TODO: must a promise when resolved produce a value?
                 resolve();
             });
         }).nodeify(cb);
