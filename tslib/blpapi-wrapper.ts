@@ -55,6 +55,10 @@ export class Session extends events.EventEmitter {
     private stopped: Promise<void> = null;
 
     // PRIVATE MANIPULATORS
+    private nextCorrelatorId() {
+        return this.correlatorId++;
+    }
+
     private listen(eventName: string, expectedId: number, handler: Function) {
         if (!(eventName in this.eventListeners)) {
             trace('Listener added: ' + eventName);
@@ -75,6 +79,36 @@ export class Session extends events.EventEmitter {
             this.session.removeAllListeners(eventName);
             delete this.eventListeners[eventName];
         }
+    }
+
+    private openService(uri: string): Promise<void> {
+        var thenable = this.services[uri] = this.services[uri] ||
+                                            new Promise<void>((resolve: Function,
+                                                               reject: Function) => {
+            trace('Opening service: ' + uri);
+            var openServiceId = this.nextCorrelatorId();
+
+            this.session.openService(uri, openServiceId);
+
+            this.listen('ServiceOpened', openServiceId, (ev: any) => {
+                log('Service opened: ' + uri);
+                trace(ev);
+                this.unlisten('ServiceOpened', openServiceId);
+                this.unlisten('ServiceOpenFailure', openServiceId);
+                resolve();
+            });
+
+            this.listen('ServiceOpenFailure', openServiceId, (ev: any) => {
+                log('Service open failure' + uri);
+                trace(ev);
+                this.unlisten('ServiceOpened', openServiceId);
+                this.unlisten('ServiceOpenFailure', openServiceId);
+                delete this.services[uri];
+                reject(new BlpApiError(ev.data));
+            });
+        }).bind(this); // end 'new Promise'
+
+        return thenable;
     }
 
     private requestHandler(cb: RequestCallback, requestId: number, m: any) {
@@ -126,6 +160,13 @@ export class Session extends events.EventEmitter {
         log('Session terminated');
     }
 
+    // PRIVATE ACCESSORS
+    private validateSession() {
+        if (this.stopped) {
+            throw new Error('session terminated');
+        }
+    }
+
 
     // CREATORS
     constructor(opts: blpapi.SessionOpts) {
@@ -139,9 +180,7 @@ export class Session extends events.EventEmitter {
 
     // MANIPULATORS
     start(cb?: (err: any, value: any) => void): Promise<void> {
-        if (this.stopped) {
-            throw new Error('session terminated');
-        }
+        this.validateSession();
 
         return new Promise<void>((resolve: Function, reject: Function) => {
             trace('Starting session');
@@ -180,37 +219,14 @@ export class Session extends events.EventEmitter {
     }
 
     request(uri: string, name: string, request: any, callback: RequestCallback): void {
-        if (this.stopped) {
-            return process.nextTick(callback.bind(null, new Error('session terminated')));
-        }
+        this.validateSession();
 
         var requestId = this.requestId++;
         this.requests[requestId] = callback;
 
-        var thenable = this.services[uri] = this.services[uri] ||
-                                            new Promise<void>((resolve: Function,
-                                                               reject: Function) => {
-            var openServiceId = this.correlatorId++;
-
-            this.session.openService(uri, openServiceId);
-
-            this.listen('ServiceOpened', openServiceId, (ev: any) => {
-                this.unlisten('ServiceOpened', openServiceId);
-                this.unlisten('ServiceOpenFailure', openServiceId);
-                resolve();
-            });
-
-            this.listen('ServiceOpenFailure', openServiceId, (ev: any) => {
-                this.unlisten('ServiceOpened', openServiceId);
-                this.unlisten('ServiceOpenFailure', openServiceId);
-                delete this.services[uri];
-                reject(new BlpApiError(ev.data));
-            });
-        }).bind(this); // end 'new Promise'
-
-        thenable.then(() => {
+        this.openService(uri).then(() => {
             var responseEventName = name + 'Response';
-            var correlatorId = this.correlatorId++;
+            var correlatorId = this.nextCorrelatorId();
             var requestName = name + 'Request';
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
