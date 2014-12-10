@@ -45,6 +45,10 @@ function isObjectEmpty(obj: Object) {
 }
 
 export class Session extends events.EventEmitter {
+    //ATTRIBUTES
+    // TypeScript compiler needs this to allow "this['property-string']" type of access
+    [index: string]: any;
+
     // DATA
     private session: blpapi.Session;
     private eventListeners: {[index: string]: {[index: number]: Function}} = {};
@@ -134,17 +138,18 @@ export class Session extends events.EventEmitter {
         log('Session terminating');
         trace(ev);
 
-        // clean up listeners
-        Object.getOwnPropertyNames(this.eventListeners).forEach((eventName) => {
+        [{prop: 'eventListeners', cleanupFn: (eventName: string) => {
             this.session.removeAllListeners(eventName);
+         }},
+         {prop: 'requests', cleanupFn: (k: string) => {
+            this.requests[k](new Error('session terminated'));
+         }}
+        ].forEach((table) => {
+            Object.getOwnPropertyNames(this[table.prop]).forEach((key) => {
+                table.cleanupFn(key);
+            });
+            this[table.prop] = null;
         });
-        this.eventListeners = {};
-
-        // notify pending requests that the session has been terminated
-        Object.getOwnPropertyNames(this.requests).forEach((key) => {
-            this.requests[key](new Error('session terminated'));
-        });
-        this.requests = {};
 
         if (!this.stopped) {
             this.stopped = Promise.resolve();
