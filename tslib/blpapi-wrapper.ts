@@ -51,11 +51,10 @@ export class Session extends events.EventEmitter {
     private requests: {[index: string]: RequestCallback} = {};
     private services: {[index: string]: Promise<void>} = {};
     private correlatorId: number = 0;
-    private requestId: number = 0;
     private stopped: Promise<void> = null;
 
     // PRIVATE MANIPULATORS
-    private nextCorrelatorId() {
+    private nextCorrelatorId(): number {
         return this.correlatorId++;
     }
 
@@ -111,7 +110,7 @@ export class Session extends events.EventEmitter {
         return thenable;
     }
 
-    private requestHandler(cb: RequestCallback, requestId: number, m: any) {
+    private requestHandler(cb: RequestCallback, m: any) {
         var eventType = m.eventType;
         var isFinal = (EVENT_TYPE.RESPONSE === eventType);
 
@@ -126,7 +125,7 @@ export class Session extends events.EventEmitter {
         if (isFinal) {
             var correlatorId = m.correlations[0].value;
             var messageType = m.messageType;
-            delete this.requests[requestId];
+            delete this.requests[correlatorId];
             this.unlisten(messageType, correlatorId);
         }
     }
@@ -221,21 +220,20 @@ export class Session extends events.EventEmitter {
     request(uri: string, name: string, request: any, callback: RequestCallback): void {
         this.validateSession();
 
-        var requestId = this.requestId++;
-        this.requests[requestId] = callback;
+        var correlatorId = this.nextCorrelatorId();
+        this.requests[correlatorId] = callback;
 
         this.openService(uri).then(() => {
             var responseEventName = name + 'Response';
-            var correlatorId = this.nextCorrelatorId();
             var requestName = name + 'Request';
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
             this.session.request(uri, requestName, request, correlatorId);
             this.listen(responseEventName,
                         correlatorId,
-                        this.requestHandler.bind(this, callback, requestId));
+                        this.requestHandler.bind(this, callback));
         }).catch(function(ex) {
-            delete this.requests[requestId];
+            delete this.requests[correlatorId];
             callback(ex);
         });
     }
