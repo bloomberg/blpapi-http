@@ -9,6 +9,7 @@
     "bunyan": "^1.2.3",
     "convict": "^0.6.1",
     "debug": "^2.1.0",
+    "lodash": "^2.4.1",
     "optimist": "^0.6.1",
     "restify": "^2.8.4"
   },
