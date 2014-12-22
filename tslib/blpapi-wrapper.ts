@@ -67,6 +67,8 @@ export class Session extends events.EventEmitter {
             trace('Listener added: ' + eventName);
             this.session.on(eventName, ((eventName: string, m: any) => {
                 var correlatorId = m.correlations[0].value;
+                assert(correlatorId in this.eventListeners[eventName],
+                       'correlation id does not exist: ' + correlatorId);
                 this.eventListeners[eventName][correlatorId](m);
             }).bind(this, eventName));
 
