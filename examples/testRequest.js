@@ -5,17 +5,12 @@ var http = require('http');
 
 // Config
 var NUM_CLIENT = 10;
-var MAX_DELAY = 0;
+var MAX_DELAY = 500;
 var NUM_REQUEST = Infinity;
 var PRINT_OUTPUT = false;
 var HOST = 'http://localhost:3000';
 
-//var poolOption = { maxSockets: Infinity };
-//http.globalAgent.maxSockets = 100;
-var sec = ['IBM', 'AAPL', 'GOOG', 'TSLA', 'XOM', 'MSFT', 'JNJ', 'WFC', 'GE', 'PG'];
-
 // Main
-//console.log('Testing BLPAPI-HTTP request/response module with ' + NUM_CLIENT + ' clients making requests every ' + MAX_DELAY + 'ms(min).')
 if (cluster.isMaster) {
 	for (var i = 0; i < NUM_CLIENT; i++) {
 	  cluster.fork();
@@ -29,7 +24,6 @@ if (cluster.isMaster) {
 		console.log('worker ' + worker.process.pid + ' died.');
 	});
 } else {
-	//console.log('Worker ' + cluster.worker.id + ' is working.');
 	clientRequest(cluster.worker.id);
 }
 
@@ -42,16 +36,13 @@ function clientRequest(clientId) {
 	makeRequest();
 
 	function makeRequest() {
-		//var delay = Math.floor((Math.random() * MAX_DELAY));
+		var delay = Math.floor((Math.random() * MAX_DELAY));
 		var t = process.hrtime();
-		//console.log('**********************************************************');
-		//console.log('Client Id: ' + clientId + '. Making ' + counter + ' requests...');
 		request.postAsync({
 			url : HOST + '/v1.0/request/blp/refdata/HistoricalData',
 			body : JSON.stringify(
 						{ 
 							securities: ['IBM US Equity', 'AAPL US Equity'],
-							//securities: [sec[clientId*2 - 2], sec[clientId*2 - 1]],
 				            fields: ['PX_LAST', 'OPEN', 'EPS_ANNUALIZED'],
 				            startDate: '20120101',
 				            endDate: '20120301',
@@ -65,12 +56,13 @@ function clientRequest(clientId) {
 			if (PRINT_OUTPUT) {
 				console.log(contents[1]);	
 			}
+		})
+		.delay(delay)
+		.then(function(){
 			if (counter < NUM_REQUEST) {
 				makeRequest();
 			}
-			//console.log('**********************************************************');
 		})
-		//.delay(delay)
 		.catch(function(err) {
 			console.log(err);
 			process.exit();
