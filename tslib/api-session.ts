@@ -2,24 +2,15 @@
 
 import assert = require('assert');
 import http = require('http');
-
 import Promise = require('bluebird');
-var uid = require('uid-safe');
-var parseurl = require('parseurl');
-var qs = require('qs');
 var ipwareMod = require('ipware');
 var ipware = ipwareMod();
-
-var config = require('../lib/config.js');
-import SessionStore = require('./SessionStore');
 
 function stringifyPair ( key: string, value: any ): string {
     return '"' + key.replace(/'/g, '\\$&') + '":' + JSON.stringify(value);
 }
 
 export interface OurRequest extends http.ServerRequest {
-    parsedQuery?: any;
-    session?: any;
     clientIp?: string;
     clientIpRoutable?: boolean;
 }
@@ -32,27 +23,12 @@ export interface OurResponse extends http.ServerResponse {
 
 export function makeHandler (): (req: OurRequest, res: OurResponse, next: Function ) => void
 {
-    var G_STORE = new SessionStore<any>(config.get('expiration'));
-
     return function handleSession ( req: OurRequest, res: OurResponse, next: Function ): void {
-        var parsed = parseurl(req);
-        var parsedQuery = qs.parse(parsed.query);
-
         var chunkIndex: number = 0;
-        var useJsonp: boolean = !!parsedQuery.jpcb;
         var chunk: string; // the current chunk string is assembled here
         var needComma: boolean = false; // need to append a ',' before adding more data
 
-        req.parsedQuery = parsedQuery;
-
         ipware.get_ip(req); // sets req.clientIp and req.clientIpRoutable
-
-        // If a session was specified in the query, try to load it
-        var session = parsedQuery.sessid && G_STORE.get(parsedQuery.sessid);
-        if (session) {
-            ++session.inUse;
-            req.session = session;
-        }
 
         // returns a promise
         function prepareSession (): Promise<any> {
@@ -60,22 +36,9 @@ export function makeHandler (): (req: OurRequest, res: OurResponse, next: Functi
             // Before sending the first chunk we must take care of the session id and set the
             // content type
             if (++chunkIndex === 1) {
-                res.setHeader('content-type', parsedQuery.callback ? 'text/javascript' :
-                                                                     'application/json');
-
-                chunk = useJsonp ? parsedQuery.jpcb + '({' : '{';
+                res.setHeader('content-type', 'application/json');
+                chunk = '{';
                 needComma = false;
-
-                // if the request has an associated session, make sure it has an id, generating one
-                // if needed, and store it in the session store.
-                if (req.session) {
-                    resultP = Promise.resolve(req.session.sessid || uid(24)).then(function(sessid) {
-                        req.session.sessid = sessid;
-                        G_STORE.set(sessid, req.session);
-                        chunk += stringifyPair( 'sessid', req.session.sessid );
-                        needComma = true;
-                    });
-                }
             } else {
                 chunk = '';
             }
@@ -91,7 +54,7 @@ export function makeHandler (): (req: OurRequest, res: OurResponse, next: Functi
                     if (needComma) {
                         chunk += ',';
                     }
-                    chunk += '\'data\':[';
+                    chunk += '\"data\":[';
                     needComma = false;
                 }
                 if (needComma) {
@@ -118,9 +81,6 @@ export function makeHandler (): (req: OurRequest, res: OurResponse, next: Functi
                 chunk += stringifyPair( 'status', status ) + ',' +
                          stringifyPair( 'message', message || '' ) +
                          '}';
-                if (useJsonp) {
-                    chunk += ')';
-                }
                 res.end( chunk );
                 needComma = false;
                 chunk = '';
@@ -138,15 +98,6 @@ export function makeHandler (): (req: OurRequest, res: OurResponse, next: Functi
                 status = {source: 'BProx', category: 'UNCLASSIFIED', errorCode: -1};
             }
             return res.sendEnd( status, err.message || where );
-        };
-
-        // Monkey-patch response.end() to track the lifetime of the response
-        var savedEnd = res.end;
-        res.end = function(data?: any, encoding?: any, cb?: any) {
-            savedEnd.call( res, data, encoding, cb );
-            if (session) {
-                --session.inUse;
-            }
         };
 
         return next();
