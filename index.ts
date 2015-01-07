@@ -1,10 +1,11 @@
 /// <reference path='typings/tsd.d.ts' />
 
+import https = require('https');
+import fs = require('fs');
+
 import Promise = require('bluebird');
 import debugMod = require('debug');
 
-import assert = require('assert');
-import http = require('http');
 var connect = require('connect');
 import morgan = require('morgan');
 var jsonBodyAsync = Promise.promisify( require('body/json') );
@@ -125,13 +126,22 @@ function onRequest(req: apiSession.OurRequest,
     });
  }
 
- var server = http.createServer(app);
- server.on('error', function (ex: Error) {
-     console.error(ex.message);
-     process.exit(1);
- });
 
- server.listen(conf.get('port'));
- server.on('listening', function() {
-     console.log('listening on', conf.get('port') );
- });
+var options = {
+    key: fs.readFileSync('keys/hackathon-key.pem'),
+    cert: fs.readFileSync('keys/hackathon-crt.pem'),
+    ca: fs.readFileSync('keys/bloomberg-ca-crt.pem'),
+    requestCert: true,
+    rejectUnauthorized: true
+};
+
+var server = https.createServer(options, app);
+server.on('error', function (ex: Error) {
+    console.error(ex.message);
+    process.exit(1);
+});
+
+server.listen(conf.get('port'));
+server.on('listening', function() {
+    console.log('listening on', conf.get('port') );
+});
