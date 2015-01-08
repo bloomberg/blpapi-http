@@ -74,6 +74,8 @@ createSession()
 })
 .catch((err: Error): void => {
     error( err.message );
+    console.log(err);
+    process.exit(1);
 });
 
 // Create a new session
