@@ -1,9 +1,9 @@
 /// <reference path='typings/tsd.d.ts' />
 
+import https = require('https');
+import fs = require('fs');
 import Promise = require('bluebird');
 import debugMod = require('debug');
-import assert = require('assert');
-import http = require('http');
 import morgan = require('morgan');
 import BAPI = require('./tslib/blpapi-wrapper');
 import apiSession = require('./tslib/api-session');
@@ -42,8 +42,15 @@ createSession()
     }));
     app.use( versionCheck( 1, 0, api1 ) );
 
-    // Http server
-    var server = http.createServer(app);
+    // Https server
+    var options = {
+        key: fs.readFileSync('keys/hackathon-key.pem'),
+        cert: fs.readFileSync('keys/hackathon-crt.pem'),
+        ca: fs.readFileSync('keys/bloomberg-ca-crt.pem'),
+        requestCert: true,
+        rejectUnauthorized: true
+    };
+    var server = https.createServer(options, app);
     server.listen(conf.get('port'));
     server.on('error', (ex: Error): void => {
         console.error(ex.message);
@@ -122,6 +129,4 @@ function onRequest(req: apiSession.OurRequest,
     }).catch( (err: Error): Promise<any> => {
         return res.sendError( err, 'Request error', {category: 'BAD_ARGS'} );
     });
- }
-
-
+}
