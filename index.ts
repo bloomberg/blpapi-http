@@ -61,14 +61,16 @@ createSession()
     });
     server.on('close', (): void => {
         console.log('server closed.');
-        var sess = this.session;
-        this.session = null;
-        sess.stop()
+        session.removeAllListeners();
+        session.stop()
         .then( (): void => {
             debug( 'stopped session' );
+            console.log('session stoped.');
             sessConnected = false;
+            this.session = null;
         }).catch( (err: Error): void => {
             error( 'session.stop error', err.message );
+            console.log('session.stop error', err);
         });
     });
 })
