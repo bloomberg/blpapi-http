@@ -28,7 +28,8 @@ createSession()
         name: 'BLPAPI-HTTP',
         log: logger,
         version: '1.0.0',
-        acceptable: ['application/json']
+        acceptable: ['application/json'],
+        httpsServerOptions: conf.httpsOptions
     });
 
     // Setup request logging
