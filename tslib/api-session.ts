@@ -3,19 +3,16 @@
 import assert = require('assert');
 import http = require('http');
 import Promise = require('bluebird');
-var ipwareMod = require('ipware');
-var ipware = ipwareMod();
+import restify = require('restify');
 
 function stringifyPair ( key: string, value: any ): string {
     return '"' + key.replace(/'/g, '\\$&') + '":' + JSON.stringify(value);
 }
 
-export interface OurRequest extends http.ServerRequest {
-    clientIp?: string;
-    clientIpRoutable?: boolean;
+export interface OurRequest extends restify.Request {
 }
 
-export interface OurResponse extends http.ServerResponse {
+export interface OurResponse extends restify.Response {
     sendChunk?: (data: any) => Promise<any>;
     sendEnd?: (status: any, message: string) => Promise<any>;
     sendError?: (err: any, where: string, reason?: any) => Promise<any>;
@@ -28,7 +25,11 @@ export function makeHandler (): (req: OurRequest, res: OurResponse, next: Functi
         var chunk: string; // the current chunk string is assembled here
         var needComma: boolean = false; // need to append a ',' before adding more data
 
-        ipware.get_ip(req); // sets req.clientIp and req.clientIpRoutable
+        // Check the content type of the request
+        // TODO: configure acceptable content-type
+        if (!req.is('application/json')) {
+            return next(new restify.UnsupportedMediaTypeError('Unsupported Content-Type.'));
+        }
 
         // returns a promise
         function prepareSession (): Promise<any> {
