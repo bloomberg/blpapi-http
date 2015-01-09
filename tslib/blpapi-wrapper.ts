@@ -39,9 +39,13 @@ var EVENT_TYPE = {
   , PARTIAL_RESPONSE: 'PARTIAL_RESPONSE'
 };
 
-// ANONYMOUS FUNCTION
+// ANONYMOUS FUNCTIONS
 function isObjectEmpty(obj: Object) {
     return (0 === Object.getOwnPropertyNames(obj).length);
+}
+
+function reqName2RespName(name: string) {
+    return name.replace(/^Field\w+/, 'field') + 'Response';
 }
 
 export class Session extends events.EventEmitter {
@@ -231,7 +235,7 @@ export class Session extends events.EventEmitter {
         this.requests[correlatorId] = callback;
 
         this.openService(uri).then(() => {
-            var responseEventName = name + 'Response';
+            var responseEventName = reqName2RespName(name);
             var requestName = name + 'Request';
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);

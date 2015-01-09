@@ -55,7 +55,7 @@ export function makeHandler (): (req: OurRequest, res: OurResponse, next: Functi
                     if (needComma) {
                         chunk += ',';
                     }
-                    chunk += '\"data\":[';
+                    chunk += '"data":[';
                     needComma = false;
                 }
                 if (needComma) {
