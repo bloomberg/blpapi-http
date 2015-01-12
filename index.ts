@@ -6,16 +6,9 @@ import debugMod = require('debug');
 import bunyan = require('bunyan');
 import BAPI = require('./tslib/blpapi-wrapper');
 import apiSession = require('./tslib/api-session');
+import conf = require('./tslib/config');
 
-// Load config
-try {
-    var conf = require('./lib/config.js');
-} catch (err) {
-    console.log(err.message);
-    process.exit(1);
-}
-
-var logger = bunyan.createLogger(conf.loggerOptions);
+var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 var session: BAPI.Session;
 var sessConnected: boolean = false;
 
@@ -23,14 +16,9 @@ createSession()
 .then((): void => {
 
     // Create server.
-    // TODO: Add https.
-    var server = restify.createServer({
-        name: 'BLPAPI-HTTP',
-        log: logger,
-        version: '1.0.0',
-        acceptable: ['application/json'],
-        httpsServerOptions: conf.httpsOptions
-    });
+    var serverOptions = conf.get('serverOptions');
+    serverOptions.log = logger;     // Setup bunyan logger
+    var server = restify.createServer(serverOptions);
 
     // Setup request logging
     server.pre((req: restify.Request, res: restify.Response, next: restify.Next): any => {
@@ -47,10 +35,10 @@ createSession()
     server.pre(restify.pre.sanitizePath());
     server.use(apiSession.makeHandler());
     server.use(restify.acceptParser(server.acceptable));
-    server.use(restify.bodyParser(conf.bodyParserOptions));
+    server.use(restify.bodyParser(conf.get('bodyParserOptions')));
     server.use(restify.gzipResponse());
     server.use(restify.fullResponse());
-    server.use(restify.throttle(conf.throttleOptions));
+    server.use(restify.throttle(conf.get('throttleOptions')));
     server.use(restify.requestLogger());
 
     // Route
