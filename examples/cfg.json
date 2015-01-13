@@ -1,7 +1,29 @@
 {
+    "api": {
+        "host": "127.0.0.1",
+        "port": 8194
+    },
     "port" : 3000,
     "expiration" : 20,
-    "api": {
-        "host": "10.8.8.1"
+    "https": {
+        "enable": true,
+        "ca": "../keys/bloomberg-ca-crt.pem",
+        "cert": "../keys/hackathon-crt.pem",
+        "key": "../keys/hackathon-key.pem"
+    },
+    "logging": {
+        "stdout": true,
+        "stdoutLevel": "trace",
+        "logfile": "blpapi-http.log",
+        "logfileLevel": "trace"
+    },
+    "service": {
+        "name": "blpapi-http",
+        "version": "1.0.0"
+    },
+    "maxBodySize": 1024,
+    "throttle": {
+        "burst": 100,
+        "rate": 50
     }
 }
