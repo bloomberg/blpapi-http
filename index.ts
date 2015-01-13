@@ -4,9 +4,9 @@ import restify = require('restify');
 import Promise = require('bluebird');
 import debugMod = require('debug');
 import bunyan = require('bunyan');
-import BAPI = require('./tslib/blpapi-wrapper');
-import apiSession = require('./tslib/api-session');
-import conf = require('./tslib/config');
+import BAPI = require('./lib/blpapi-wrapper');
+import apiSession = require('./lib/api-session');
+import conf = require('./lib/config');
 
 var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 var session: BAPI.Session;
