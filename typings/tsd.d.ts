@@ -4,3 +4,7 @@
 /// <reference path="blpapi/blpapi.d.ts" />
 /// <reference path="morgan/morgan.d.ts" />
 /// <reference path="express/express.d.ts" />
+/// <reference path="restify/restify.d.ts" />
+/// <reference path="bunyan/bunyan.d.ts" />
+/// <reference path="convict/convict.d.ts" />
+/// <reference path="optimist/optimist.d.ts" />

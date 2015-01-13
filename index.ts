@@ -1,137 +1,127 @@
 /// <reference path='typings/tsd.d.ts' />
 
+import restify = require('restify');
 import Promise = require('bluebird');
 import debugMod = require('debug');
+import bunyan = require('bunyan');
+import BAPI = require('./lib/blpapi-wrapper');
+import apiSession = require('./lib/api-session');
+import conf = require('./lib/config');
 
-import assert = require('assert');
-import http = require('http');
-var connect = require('connect');
-import morgan = require('morgan');
-var jsonBodyAsync = Promise.promisify( require('body/json') );
-var dispatch = require('dispatch');
+var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
+var session: BAPI.Session;
+var sessConnected: boolean = false;
 
-import BAPI = require('./tslib/blpapi-wrapper');
+createSession()
+.then((): void => {
 
-var versionCheck = require('./lib/versioncheck.js');
-import apiSession = require('./tslib/api-session');
+    // Create server.
+    var serverOptions = conf.get('serverOptions');
+    serverOptions.log = logger;     // Setup bunyan logger
+    var server = restify.createServer(serverOptions);
 
-var debug = debugMod('bprox:debug');
-var info = debugMod('bprox:info');
-var error = debugMod('bprox:error');
+    // Setup request logging
+    server.pre((req: restify.Request, res: restify.Response, next: restify.Next): any => {
+        // Override request content-type so it is not mandatory for client
+        req.headers['content-type'] = 'application/json';
+        req.log.info({req: req}, 'Request received.');
+        return next();
+    });
+    server.on('after', (req: restify.Request, res: restify.Response, next: restify.Next): any => {
+        req.log.info({res: res}, 'Request finished');
+    });
 
-try {
-    var conf = require('./lib/config.js');
-    /* tslint:disable:whitespace */
-    // TODO: Raise issue with tslint on GitHub
-} catch(ex) {
-    /* tslint:enable:whitespace */
-    console.log(ex.message);
+    // Middleware
+    server.pre(restify.pre.sanitizePath());
+    server.use(apiSession.makeHandler());
+    server.use(restify.acceptParser(server.acceptable));
+    server.use(restify.bodyParser(conf.get('bodyParserOptions')));
+    server.use(restify.gzipResponse());
+    server.use(restify.fullResponse());
+    server.use(restify.throttle(conf.get('throttleOptions')));
+    server.use(restify.requestLogger());
+
+    // Route
+    server.post('/request/:ns/:svName/:reqName', onRequest);
+
+    // Listen
+    server.listen(conf.get('port'));
+    server.on('error', (err: Error): void => {
+        logger.error(err);
+        process.exit(1);
+    });
+    server.on('listening', (): void => {
+        logger.info('listening on', conf.get('port') );
+    });
+    server.on('close', (): void => {
+        logger.info('server closed.');
+        session.removeAllListeners();
+        session.stop()
+        .then( (): void => {
+            logger.info('session stoped.');
+            sessConnected = false;
+            this.session = null;
+        })
+        .catch( (err: Error): void => {
+            logger.error(err, 'session.stop error');
+        });
+    });
+})
+.catch((err: Error): void => {
+    logger.error(err);
     process.exit(1);
-}
-var app = connect();
+});
 
-app.use(morgan('combined'));
+function createSession (): Promise<any> {
+    sessConnected = false;
+    var hp = { serverHost: conf.get('api.host'), serverPort: conf.get('api.port') };
+    session = new BAPI.Session(hp);
 
-var api1 = connect();
-api1.use( apiSession.makeHandler() );
-api1.use( dispatch({
-    '/connect': onConnect,
-    '/request/:ns/:service/:request' : onRequest
-}));
+    // In case session terminate unexpectedly, try to reconnect
+    session.once('SessionTerminated', createSession);
 
-app.use( versionCheck( 1, 0, api1 ) );
-
-var hp = { serverHost: conf.get('api.host'), serverPort: conf.get('api.port') };
-
-class Session {
-    inUse: number = 0;
-    blpsess: BAPI.Session
-
-    constructor ( req: apiSession.OurRequest, blpsess: BAPI.Session ) {
-        this.blpsess = blpsess;
-        debug( 'Created new session for client', req.clientIp );
-    }
-
-    expire(): boolean
-    {
-        if (this.inUse) {
-            return false;
-        }
-
-        if (this.blpsess) {
-            var blpsess = this.blpsess;
-            this.blpsess = null;
-            blpsess.stop().then( function() {
-                debug( 'stopped blpsess' );
-            }).catch( function(err: Error) {
-                error( 'blpsess.stop error', err.message );
-            });
-        }
-        return true;
-    }
-}
-
-
-function onConnect (req: apiSession.OurRequest, res: apiSession.OurResponse, next: Function): void {
-    if (req.session && req.session.blpsess) {
-        debug('already connected');
-        res.sendEnd( 0, 'Already connected' );
-        return;
-    }
-    // Create a new session
-    var blpsess = new BAPI.Session(hp);
-    blpsess.start().then( function (): Promise<any> {
-        req.session = new Session(req, blpsess);
-        return res.sendEnd( 0, 'Connected' );
-    }).catch( function(err: Error) {
-        debug('error connecting:', err);
-        return res.sendError( err, 'Error connecting' );
+    return session.start()
+    .then((): void => {
+        sessConnected = true;
+        logger.info('Session connected.');
+    }).catch( (err: Error): void => {
+        logger.fatal(err, 'error connecting session.');
+        // If we can't connect the session, terminate the server
+        process.exit(1);
     });
 }
 
 function onRequest(req: apiSession.OurRequest,
                    res: apiSession.OurResponse,
-                   next: Function,
-                   ns: string,
-                   svName: string,
-                   reqName: string) {
-    var session: Session = req.session;
-
-    if (!session || !session.blpsess) {
-        return res.sendError( {}, 'Not connected', {category: 'NO_AUTH'} );
+                   next: (err?: any) => any): Promise<any> {
+    if (!sessConnected) {
+        req.log.error('Session not connected.');
+        return next(new restify.InternalError('Session not connected'));
     }
 
-    var p: Promise<any> = (req.method === 'GET') ? Promise.resolve( req.parsedQuery.q )
-                                                 : jsonBodyAsync( req, res );
-
-    p.then( function(body: any) {
-        session.blpsess.request('//' + ns + '/' + svName,
-                                reqName,
-                                body,
-                                function (err: Error, data: any, last: boolean) {
-            if (err) {
-                debug('request error:', err);
-                return res.sendError( err, 'Request error', {category: 'BAD_ARGS'} );
-            }
-            var p = res.sendChunk( data );
-            if (last) {
-                p.then(function() {
-                    return res.sendEnd( 0, 'OK' );
-                });
-            }
-        });
-    }).catch( function(err) {
-        return res.sendError( err, 'Request error', {category: 'BAD_ARGS'} );
+    (() : Promise<any> => {
+        return (new Promise<any>((resolve : () => void,
+                                  reject : (error : any) => void) : void => {
+            session.request('//' + req.params.ns + '/' + req.params.svName,
+                            req.params.reqName,
+                            req.body,
+                            (err: Error, data: any, last: boolean): void => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                var p = res.sendChunk( data );
+                if (last) {
+                    p.then((): Promise<any> => {
+                        return res.sendEnd( 0, 'OK' );
+                    }).then(resolve);
+                }
+            });
+        }));
+    })()
+    .then(next)
+    .catch( (err: Error): any => {
+        req.log.error(err, 'Request error.');
+        return next(new restify.BadRequestError(err.message));
     });
- }
-
- var server = http.createServer(app);
- server.on('error', function (ex: Error) {
-     console.error(ex.message);
-     process.exit(1);
- });
-
- server.listen(conf.get('port'));
- server.on('listening', function() {
-     console.log('listening on', conf.get('port') );
- });
+}
