@@ -4,9 +4,11 @@
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
 
 /// <reference path="../node/node.d.ts" />
+/// <reference path="../bunyan/bunyan.d.ts" />
 
 declare module "restify" {
   import http = require('http');
+  import bunyanLog = require('bunyan');
 
   interface addressInterface {
     port: number;
@@ -22,7 +24,7 @@ declare module "restify" {
     contentLength: number;
     contentType: string;
     href: () => string;
-    log: any;
+    log: bunyanLog.Logger;
     id: string;
     path: () => string;
     query: any;
