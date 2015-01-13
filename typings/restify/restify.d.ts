@@ -8,8 +8,7 @@
 
 declare module "restify" {
   import http = require('http');
-  import bunyan = require('bunyan');
-
+  import bunyanLog = require('bunyan');
 
   interface addressInterface {
     port: number;
@@ -25,7 +24,7 @@ declare module "restify" {
     contentLength: number;
     contentType: string;
     href: () => string;
-    log: bunyan.Logger;
+    log: bunyanLog.Logger;
     id: string;
     path: () => string;
     query: any;
