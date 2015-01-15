@@ -94,6 +94,18 @@ class Config {
                     format: String,
                     default: 'trace',
                     arg: 'logging-logfileLevel'
+                },
+                'reqBody': {
+                    doc: 'Boolean option to control whether to log request body',
+                    format: Boolean,
+                    default: false,
+                    arg: 'logging-reqBody'
+                },
+                'clientDetail': {
+                    doc: 'Boolean option to control whether to log client details',
+                    format: Boolean,
+                    default: false,
+                    arg: 'logging-clientDetail'
                 }
             },
             'service': {
@@ -138,10 +150,10 @@ class Config {
         Config.convictConf.validate();
 
         // Build options object
-        Config.buildOptions();
+        Config.initialize();
     })();
 
-    private static buildOptions(): void {
+    private static initialize(): void {
         // Bunyan logger options
         // Override default bunyan response serializer
         bunyan.stdSerializers['res'] = function(res) {
@@ -151,6 +163,13 @@ class Config {
             return {
                 statusCode: res.statusCode,
                 header: res._headers
+            };
+        };
+        // Add client cert serializer
+        bunyan.stdSerializers['cert'] = function(cert): any {
+            return cert && {
+                CN: cert.subject.CN,
+                fingerprint: cert.fingerprint
             };
         };
         var streams: {}[] = [{level: Config.convictConf.get('logging.logfileLevel'),

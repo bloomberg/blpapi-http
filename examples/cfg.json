@@ -13,9 +13,11 @@
     },
     "logging": {
         "stdout": true,
-        "stdoutLevel": "trace",
+        "stdoutLevel": "debug",
         "logfile": "blpapi-http.log",
-        "logfileLevel": "trace"
+        "logfileLevel": "trace",
+        "reqBody": true,
+        "clientDetail": true
     },
     "service": {
         "name": "blpapi-http",

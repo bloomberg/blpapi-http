@@ -7,6 +7,7 @@ import bunyan = require('bunyan');
 import BAPI = require('./lib/blpapi-wrapper');
 import apiSession = require('./lib/api-session');
 import conf = require('./lib/config');
+import plugin = require('./lib/plugin');
 
 var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 var session: BAPI.Session;
@@ -21,7 +22,7 @@ createSession()
     var server = restify.createServer(serverOptions);
 
     // Setup request logging
-    server.pre((req: restify.Request, res: restify.Response, next: restify.Next): any => {
+    server.pre(function pre(req: restify.Request, res: restify.Response, next: restify.Next): any {
         // Override request content-type so it is not mandatory for client
         req.headers['content-type'] = 'application/json';
         req.log.info({req: req}, 'Request received.');
@@ -40,6 +41,7 @@ createSession()
     server.use(restify.fullResponse());
     server.use(restify.throttle(conf.get('throttleOptions')));
     server.use(restify.requestLogger());
+    server.use(plugin.log());
 
     // Route
     server.post('/request/:ns/:svName/:reqName', onRequest);
