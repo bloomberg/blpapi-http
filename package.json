@@ -7,7 +7,7 @@
     "blpapi": "^0.1.14",
     "bluebird": "^2.8.2",
     "bunyan": "^1.2.3",
-    "convict": "^0.5.1",
+    "convict": "^0.6.1",
     "debug": "^2.1.0",
     "optimist": "^0.6.1",
     "restify": "^2.8.4"
