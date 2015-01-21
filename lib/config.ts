@@ -11,7 +11,7 @@ class Config {
     private static otherConf: {[index: string]: any};
 
     // Private static constructor
-    private static _constructor = (() => {
+    private static _constructor = ((): void => {
         Config.otherConf = {};
 
         // Convict from file
@@ -156,7 +156,7 @@ class Config {
     private static initialize(): void {
         // Bunyan logger options
         // Override default bunyan response serializer
-        bunyan.stdSerializers['res'] = function(res) {
+        bunyan.stdSerializers['res'] = function(res): any {
             if (!res || !res.statusCode) {
                 return res;
             }

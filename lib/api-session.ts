@@ -49,7 +49,7 @@ export function makeHandler (): (req: OurRequest, res: OurResponse, next: Functi
 
         res.sendChunk = function ( data ): Promise<any> {
             var p = prepareSession();
-            return p.then(function() {
+            return p.then((): void => {
                 if (chunkIndex === 1) {
                     res.statusCode = 200;
                     if (needComma) {
@@ -68,7 +68,7 @@ export function makeHandler (): (req: OurRequest, res: OurResponse, next: Functi
 
         res.sendEnd = function(status, message): Promise<any> {
             var p = prepareSession();
-            return p.then(function() {
+            return p.then((): void => {
                 // If this is the only chunk, we can set the http status
                 if (chunkIndex === 1) {
                     res.statusCode = 200;

@@ -40,11 +40,11 @@ var EVENT_TYPE = {
 };
 
 // ANONYMOUS FUNCTIONS
-function isObjectEmpty(obj: Object) {
+function isObjectEmpty(obj: Object): boolean {
     return (0 === Object.getOwnPropertyNames(obj).length);
 }
 
-function reqName2RespName(name: string) {
+function reqName2RespName(name: string): string {
     return name.replace(/^Field\w+/, 'field') + 'Response';
 }
 
@@ -66,10 +66,10 @@ export class Session extends events.EventEmitter {
         return this.correlatorId++;
     }
 
-    private listen(eventName: string, expectedId: number, handler: Function) {
+    private listen(eventName: string, expectedId: number, handler: Function): void {
         if (!(eventName in this.eventListeners)) {
             trace('Listener added: ' + eventName);
-            this.session.on(eventName, ((eventName: string, m: any) => {
+            this.session.on(eventName, ((eventName: string, m: any): void => {
                 var correlatorId = m.correlations[0].value;
                 assert(correlatorId in this.eventListeners[eventName],
                        'correlation id does not exist: ' + correlatorId);
@@ -81,7 +81,7 @@ export class Session extends events.EventEmitter {
         this.eventListeners[eventName][expectedId] = handler;
     }
 
-    private unlisten(eventName: string, correlatorId: number) {
+    private unlisten(eventName: string, correlatorId: number): void {
         delete this.eventListeners[eventName][correlatorId];
         if (isObjectEmpty(this.eventListeners[eventName])) {
             trace('Listener removed: ' + eventName);
@@ -93,13 +93,13 @@ export class Session extends events.EventEmitter {
     private openService(uri: string): Promise<void> {
         var thenable = this.services[uri] = this.services[uri] ||
                                             new Promise<void>((resolve: Function,
-                                                               reject: Function) => {
+                                                               reject: Function): void => {
             trace('Opening service: ' + uri);
             var openServiceId = this.nextCorrelatorId();
 
             this.session.openService(uri, openServiceId);
 
-            this.listen('ServiceOpened', openServiceId, (ev: any) => {
+            this.listen('ServiceOpened', openServiceId, (ev: any): void => {
                 log('Service opened: ' + uri);
                 trace(ev);
                 this.unlisten('ServiceOpened', openServiceId);
@@ -107,7 +107,7 @@ export class Session extends events.EventEmitter {
                 resolve();
             });
 
-            this.listen('ServiceOpenFailure', openServiceId, (ev: any) => {
+            this.listen('ServiceOpenFailure', openServiceId, (ev: any): void => {
                 log('Service open failure' + uri);
                 trace(ev);
                 this.unlisten('ServiceOpened', openServiceId);
@@ -120,7 +120,7 @@ export class Session extends events.EventEmitter {
         return thenable;
     }
 
-    private requestHandler(cb: RequestCallback, m: any) {
+    private requestHandler(cb: RequestCallback, m: any): void {
         var eventType = m.eventType;
         var isFinal = (EVENT_TYPE.RESPONSE === eventType);
 
@@ -140,18 +140,18 @@ export class Session extends events.EventEmitter {
         }
     }
 
-    private sessionTerminatedHandler(ev: any) {
+    private sessionTerminatedHandler(ev: any): void {
         log('Session terminating');
         trace(ev);
 
-        [{prop: 'eventListeners', cleanupFn: (eventName: string) => {
+        [{prop: 'eventListeners', cleanupFn: (eventName: string): void => {
             this.session.removeAllListeners(eventName);
          }},
-         {prop: 'requests', cleanupFn: (k: string) => {
+         {prop: 'requests', cleanupFn: (k: string): void => {
             this.requests[k](new Error('session terminated'));
          }}
-        ].forEach((table) => {
-            Object.getOwnPropertyNames(this[table.prop]).forEach((key) => {
+        ].forEach((table): void => {
+            Object.getOwnPropertyNames(this[table.prop]).forEach((key): void => {
                 table.cleanupFn(key);
             });
             this[table.prop] = null;
@@ -171,7 +171,7 @@ export class Session extends events.EventEmitter {
     }
 
     // PRIVATE ACCESSORS
-    private validateSession() {
+    private validateSession(): void {
         if (this.stopped) {
             throw new Error('session terminated');
         }
@@ -192,24 +192,24 @@ export class Session extends events.EventEmitter {
     start(cb?: (err: any, value: any) => void): Promise<void> {
         this.validateSession();
 
-        return new Promise<void>((resolve: Function, reject: Function) => {
+        return new Promise<void>((resolve: Function, reject: Function): void => {
             trace('Starting session');
             this.session.start();
 
-            var listener = (listenerName: string, handler: Function, ev: any) => {
+            var listener = (listenerName: string, handler: Function, ev: any): void => {
                 this.session.removeAllListeners(listenerName);
                 handler(ev.data);
             };
 
             this.session.once('SessionStarted',
-                              listener.bind(this, 'SessionStartupFailure', (data: any) => {
+                              listener.bind(this, 'SessionStartupFailure', (data: any): void => {
                                   log('Session started');
                                   trace(data);
                                   resolve();
                               }));
 
             this.session.once('SessionStartupFailure',
-                              listener.bind(this, 'SessionStarted', (data: any) => {
+                              listener.bind(this, 'SessionStarted', (data: any): void => {
                                   log('Session start failure');
                                   trace(data);
                                   reject(new BlpApiError(data));
@@ -219,10 +219,10 @@ export class Session extends events.EventEmitter {
 
     stop(cb?: (err: any, value: any) => void): Promise<void> {
         return this.stopped = this.stopped ||
-                              new Promise<void>((resolve: Function, reject: Function) => {
+                              new Promise<void>((resolve: Function, reject: Function): void => {
             log('Stopping session');
             this.session.stop();
-            this.session.once('SessionTerminated', (ev: any) => {
+            this.session.once('SessionTerminated', (ev: any): void => {
                 resolve();
             });
         }).nodeify(cb);
@@ -234,7 +234,7 @@ export class Session extends events.EventEmitter {
         var correlatorId = this.nextCorrelatorId();
         this.requests[correlatorId] = callback;
 
-        this.openService(uri).then(() => {
+        this.openService(uri).then((): void => {
             var responseEventName = reqName2RespName(name);
             var requestName = name + 'Request';
             log(util.format('Request: %s|%d', requestName, correlatorId));
@@ -243,7 +243,7 @@ export class Session extends events.EventEmitter {
             this.listen(responseEventName,
                         correlatorId,
                         this.requestHandler.bind(this, callback));
-        }).catch(function(ex) {
+        }).catch((ex): void => {
             delete this.requests[correlatorId];
             callback(ex);
         });

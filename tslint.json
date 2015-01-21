@@ -31,6 +31,9 @@
         "radix": true,
         "semicolon": true,
         "triple-equals": true,
+        "typedef": [true,
+            "call-signature"
+        ],
         "use-strict": [true,
             "check-module"
         ],
