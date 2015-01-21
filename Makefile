@@ -8,12 +8,12 @@ SRCS_TS += $(wildcard lib/*.ts)
 
 SRCS_JS_FROM_TS += $(patsubst %.ts,%.js,$(SRCS_TS))
 
-TSC = tsc
+TSC := $(shell npm bin)/tsc
 TSC_COMMON = --module commonjs --target ES5 --sourceMap --noImplicitAny
 TS_TO_JS = $(TSC) $(TSC_COMMON)
 TSC_TARGET = .tsc.d
 
-TSLINT = tslint
+TSLINT := $(shell npm bin)/tslint
 TSLINT_TARGET = .tslint.d
 
 RM ?= rm -f
