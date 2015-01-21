@@ -19,9 +19,11 @@ TSLINT_TARGET = .tslint.d
 RM ?= rm -f
 TOUCH ?= touch
 
-.PHONY: all typescript tslint clean
+.PHONY: all check typescript tslint clean
 
 all: typescript tslint
+
+check: tslint typescript
 
 typescript: $(SRCS_JS_FROM_TS)
 
