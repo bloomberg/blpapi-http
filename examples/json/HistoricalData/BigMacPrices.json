@@ -1,0 +1,14 @@
+{
+    "securities": [
+        "BIGMCN Index",
+        "BIGMFRNC Index",
+        "BIGMUS Index",
+        "BIGMJN Index"
+    ],
+    "fields": [
+        "PX_MID"
+    ],
+    "startDate": "20000101",
+    "endDate": "20150101",
+    "periodicitySelection": "YEARLY"
+}

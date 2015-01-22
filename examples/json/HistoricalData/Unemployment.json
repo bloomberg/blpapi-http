@@ -1,0 +1,11 @@
+{
+    "securities": [
+        "EHUPUS Index"
+    ],
+    "fields": [
+        "PX_MID"
+    ],
+    "startDate": "20120101",
+    "endDate": "20150101",
+    "periodicitySelection": "QUARTERLY"
+}

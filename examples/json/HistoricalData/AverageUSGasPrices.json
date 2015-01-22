@@ -1,0 +1,11 @@
+{
+    "securities": [
+        "3AGSREG Index"
+    ],
+    "fields": [
+        "PX_LAST"
+    ],
+    "startDate": "20150101",
+    "endDate": "20150105",
+    "periodicitySelection": "DAILY"
+}
