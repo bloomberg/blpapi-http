@@ -1,0 +1,13 @@
+{
+    "securities": [
+        "WEUSKDFW ACTU Index"
+    ],
+    "fields": [
+        "PX_HIGH",
+        "PX_LOW",
+        "PX_MID"
+    ],
+    "startDate": "20150101",
+    "endDate": "20150120",
+    "periodicitySelection": "DAILY"
+}
