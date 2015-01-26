@@ -9,7 +9,7 @@ For information on how to use the HTTP API, see the [HTTP API Guide].
 
 [Bloomberg Open API]: http://bloomberglabs.com/api
 [GitHub repository]: http://github.com/bloomberg/blpapi-http
-[HTTP API Guide]: HTTP_API_Guide.md
+[HTTP API Guide]: doc/http-api-guide.md
 
 
 License
