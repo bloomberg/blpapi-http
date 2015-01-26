@@ -8,14 +8,21 @@ import util = require('util');
 import blpapi = require('blpapi');
 import Promise = require('bluebird');
 import debug = require('debug');
+import _ = require('lodash');
 
 // LOGGING
 var trace = debug('blpapi-wrapper:trace');
 var log = debug('blpapi-wrapper:debug');
 
-// TYPES
+// PUBLIC TYPES
 export interface RequestCallback {
     (err: Error, data?: any, isFinal?: boolean): void;
+}
+
+export interface Subscription extends events.EventEmitter {
+    security: string;
+    fields: string[];
+    options?: any;
 }
 
 export class BlpApiError implements Error {
@@ -48,6 +55,17 @@ function reqName2RespName(name: string): string {
     return name.replace(/^Field\w+/, 'field') + 'Response';
 }
 
+function subscriptionsToServices(subscriptions: Subscription[]): string[] {
+    return _(subscriptions).map((subscription): string => {
+        var serviceRegex = /^\/\/blp\/[a-z]+/;
+        var match = serviceRegex.exec(subscription.security);
+        // XXX: note that we shoud probably capture what the default service is to use when
+        //      reading in the session options.  However, when not specified, it is
+        //      '//blp/mktdata'.
+        return match ? match[0] : '//blp/mktdata';
+    }).uniq().valueOf();
+}
+
 export class Session extends events.EventEmitter {
     //ATTRIBUTES
     // TypeScript compiler needs this to allow "this['property-string']" type of access
@@ -57,6 +75,7 @@ export class Session extends events.EventEmitter {
     private session: blpapi.Session;
     private eventListeners: {[index: string]: {[index: number]: Function}} = {};
     private requests: {[index: string]: RequestCallback} = {};
+    private subscriptions: {[index: string]: Subscription} = {};
     private services: {[index: string]: Promise<void>} = {};
     private correlatorId: number = 0;
     private stopped: Promise<void> = null;
@@ -144,13 +163,16 @@ export class Session extends events.EventEmitter {
         log('Session terminating');
         trace(ev);
 
-        [{prop: 'eventListeners', cleanupFn: (eventName: string): void => {
+        _([{prop: 'eventListeners', cleanupFn: (eventName: string): void => {
             this.session.removeAllListeners(eventName);
          }},
          {prop: 'requests', cleanupFn: (k: string): void => {
             this.requests[k](new Error('session terminated'));
+         }},
+         {prop: 'subscriptions', cleanupFn: (k: string): void => {
+            this.subscriptions[k].emit('error', new Error('session terminated'));
          }}
-        ].forEach((table): void => {
+        ]).forEach((table): void => {
             Object.getOwnPropertyNames(this[table.prop]).forEach((key): void => {
                 table.cleanupFn(key);
             });
@@ -176,7 +198,6 @@ export class Session extends events.EventEmitter {
             throw new Error('session terminated');
         }
     }
-
 
     // CREATORS
     constructor(opts: blpapi.SessionOpts) {
@@ -248,5 +269,80 @@ export class Session extends events.EventEmitter {
             callback(ex);
         });
     }
+
+    subscribe(subscriptions: Subscription[], cb?: (err: any) => void): Promise<void> {
+        this.validateSession();
+
+        _.forEach(subscriptions, (s, i): void => {
+            // XXX: O(N) - not critical but note to use ES6 Map in the future
+            var cid = _.findKey(this.subscriptions, (other): boolean => {
+                return s === other;
+            });
+
+            if (undefined !== cid) {
+                throw new Error('Subscription already exists for index ' + i);
+            }
+        });
+
+        return Promise.all(_.map(subscriptionsToServices(subscriptions), (uri): Promise<void> => {
+            return this.openService(uri);
+        })).then((): void => {
+            log('Subscribing to: ' + JSON.stringify(subscriptions));
+
+            this.session.subscribe(_.map(subscriptions, (s): blpapi.Subscription => {
+                var cid = this.nextCorrelatorId();
+
+                // XXX: yes, this is a side-effect of map, but it is needed for performance reasons
+                //      until ES6 Map is available
+                this.subscriptions[cid] = s;
+                this.listen('MarketDataEvents', cid, (m: any): void => {
+                    s.emit('data', m.data, s);
+                });
+
+                var result: blpapi.Subscription = {
+                    security: s.security,
+                    correlation: cid,
+                    fields: s.fields
+                };
+                'options' in s && (result.options = s.options);
+                return result;
+            }));
+        }).nodeify(cb);
+    }
+
+    unsubscribe(subscriptions: Subscription[]): void {
+        this.validateSession();
+
+        log('Unsubscribing: ' + JSON.stringify(subscriptions));
+
+        var cids: number[] = [];
+        _.forEach(subscriptions, (s, i): void => {
+            // XXX: O(N) - not critical but note to use ES6 Map in the future
+            var cid = _.findKey(this.subscriptions, (other): boolean => {
+                return s === other;
+            });
+
+            if (undefined === cid) {
+                throw new Error('Subscription not found at index ' + i);
+            } else {
+                cids.push(_.parseInt(cid));
+            }
+        });
+
+        this.session.unsubscribe(_(cids).forEach((cid): void => {
+            process.nextTick((): void => {
+                this.subscriptions[cid].emit('end');
+                delete this.subscriptions[cid];
+            });
+            this.unlisten('MarketDataEvents', cid);
+        }).map((cid): blpapi.Subscription => {
+            return <blpapi.Subscription>{
+                security: ' ',
+                correlation: cid,
+                fields: []
+            };
+        }).valueOf());
+    }
 }
+
 
