@@ -1,3 +1,5 @@
+/// <reference path='typings/definitions.d.ts' />
+
 import fs = require('fs');
 import path = require('path');
 import convict = require('convict');

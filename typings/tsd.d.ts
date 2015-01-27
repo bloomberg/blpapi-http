@@ -1,4 +1,3 @@
-/// <reference path="blpapi/blpapi.d.ts" />
 /// <reference path="bluebird/bluebird.d.ts" />
 /// <reference path="convict/convict.d.ts" />
 /// <reference path="bunyan/bunyan.d.ts" />

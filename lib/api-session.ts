@@ -1,4 +1,4 @@
-/// <reference path='../typings/tsd.d.ts' />
+/// <reference path='typings/definitions.d.ts' />
 
 import assert = require('assert');
 import http = require('http');

@@ -47,8 +47,6 @@ declare module "optimist" {
 		export interface Argv extends Object {
 			_: string[];
 		}
-
-		export var argv: any;
 	}
 
 	export = optimist;

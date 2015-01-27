@@ -1,9 +1,4 @@
-// Type definitions for blpapi-node
-// Project: https://github.com/bloomberg/blpapi-node
-// Definitions by: Tzvetan Mikov <https://github.com/tmikov>
-// Definitions: https://github.com/borisyankov/DefinitelyTyped
-
-/// <reference path="../node/node.d.ts" />
+/// <reference path='definitions.d.ts' />
 
 declare module "blpapi" {
 

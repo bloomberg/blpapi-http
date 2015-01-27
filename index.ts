@@ -1,4 +1,4 @@
-/// <reference path='typings/tsd.d.ts' />
+/// <reference path='typings/definitions.d.ts' />
 
 import restify = require('restify');
 import Promise = require('bluebird');
