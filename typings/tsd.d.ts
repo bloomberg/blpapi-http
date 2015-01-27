@@ -7,3 +7,6 @@
 /// <reference path="debug/debug.d.ts" />
 /// <reference path="optimist/optimist.d.ts" />
 /// <reference path="restify/restify.d.ts" />
+/// <reference path="socket.io/socket.io.d.ts" />
+/// <reference path="ws/ws.d.ts" />
+/// <reference path="node-uuid/node-uuid.d.ts" />

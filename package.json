@@ -11,7 +11,9 @@
     "debug": "^2.1.0",
     "lodash": "^2.4.1",
     "optimist": "^0.6.1",
-    "restify": "^2.8.4"
+    "restify": "^2.8.4",
+    "bunyan": "^1.2.3",
+    "lodash": "^2.4.1"
   },
   "devDependencies": {
     "tsd": "^0.5.7",
