@@ -163,6 +163,36 @@ class Config {
                     default: 30000,
                     arg: 'longPoll-pollTimeout'
                 }
+            },
+            'webSocket': {
+                'socket-io': {
+                    'enable': {
+                        doc: 'Boolean option to control whether to run socket.io server',
+                        format: Boolean,
+                        default: true,
+                        arg: 'webSocket-socket-io-enable'
+                    },
+                    'port': {
+                        doc: 'The socket io port to listen on',
+                        format: 'port',
+                        default: 3001,
+                        arg: 'webSocket-socket-io-port'
+                    },
+                },
+                'ws': {
+                    'enable': {
+                        doc: 'Boolean option to control whether to run ws server',
+                        format: Boolean,
+                        default: true,
+                        arg: 'webSocket-ws-enable'
+                    },
+                    'port': {
+                        doc: 'The ws port to listen on',
+                        format: 'port',
+                        default: 3002,
+                        arg: 'webSocket-ws-port'
+                    },
+                }
             }
         });
 

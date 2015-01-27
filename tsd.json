@@ -28,6 +28,15 @@
     },
     "restify/restify.d.ts": {
       "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
+    },
+    "socket.io/socket.io.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
+    },
+    "ws/ws.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
+    },
+    "node-uuid/node-uuid.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
     }
   }
 }

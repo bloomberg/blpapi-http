@@ -3,11 +3,14 @@
 import restify = require('restify');
 import Promise = require('bluebird');
 import bunyan = require('bunyan');
+import sio = require('socket.io');
+import webSocket = require('ws');
 import BAPI = require('./lib/blpapi-wrapper');
 import APISess = require('./lib/api-session');
 import conf = require('./lib/config');
 import plugin = require('./lib/plugin');
 import RequestHandler = require('./lib/RequestHandler');
+import WebSocketHandler = require('./lib/WebSocketHandler');
 
 var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 var blpSession: BAPI.Session;
@@ -16,6 +19,7 @@ createSession()
 .then((): void => {
     var apiSession = new APISess.APISession(blpSession);
     var requestHandler = new RequestHandler(blpSession);
+    var webSocketHandler = new WebSocketHandler(blpSession);
 
     // Create server.
     var serverOptions = conf.get('serverOptions');
@@ -80,6 +84,38 @@ createSession()
             logger.error(err, 'blpSession.stop error');
         });
     });
+
+    // Socket.IO
+    if (conf.get('webSocket.socket-io.enable')) {
+        // Socket.IO will only work in HTTPS mode
+        if (!conf.get('https.enable')) {
+            throw new Error('can not enable socket-io on http mode.');
+        }
+
+        var serverSio: any = restify.createServer(conf.get('serverOptions'));
+        serverSio.listen(conf.get('webSocket.socket-io.port'));
+        serverSio.on('listening', (): void => {
+            logger.info('socket.io server listening on', conf.get('webSocket.socket-io.port') );
+        });
+        var io: SocketIO.Namespace = sio(serverSio.server).of('/subscription');
+        io.on('connection', webSocketHandler.onConnect_sio());
+    }
+
+    // ws
+    if (conf.get('webSocket.ws.enable')) {
+        // ws will only work in HTTPS mode
+        if (!conf.get('https.enable')) {
+            throw new Error('can not enable ws on http mode.');
+        }
+
+        var serverWS: any = restify.createServer(conf.get('serverOptions'));
+        serverWS.listen(conf.get('webSocket.ws.port'));
+        serverWS.on('listening', (): void => {
+            logger.info('ws server listening on', conf.get('webSocket.ws.port') );
+        });
+        var wss = new webSocket.Server({server: serverWS.server});
+        wss.on('connection', webSocketHandler.onConnect_ws());
+    }
 
 })
 .catch((err: Error): void => {

@@ -77,12 +77,13 @@ function clientRequest(clientId) {
         request.getAsync({
             url : HOST + '/poll?pollid=' + counter,
             pool: agent,
+            json: true,
             agentOptions: opt
         })
         .then(function(contents) {
             var diff = process.hrtime(t);
             console.log('Client Id: ' + clientId + '. Response: ' + counter + '. Time: ' + (diff[0] * 1e3 + diff[1] / 1e6) + 'ms');
-            if (!JSON.parse(contents[1]).status) {
+            if (contents[0].statusCode === 200 && !contents[1].status) {
                 ++counter;
             }
             if (PRINT_OUTPUT) {
@@ -99,6 +100,7 @@ function clientRequest(clientId) {
                     url : HOST + '/unsubscribe',
                     //body : JSON.stringify({ correlationIds: [0] }),
                     pool: agent,
+                    json: true,
                     agentOptions: opt
                 })
                 .then(function(contents) {
