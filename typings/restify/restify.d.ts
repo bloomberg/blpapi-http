@@ -8,7 +8,8 @@
 
 declare module "restify" {
   import http = require('http');
-  import bunyanLog = require('bunyan');
+  import bunyan = require('bunyan');
+
 
   interface addressInterface {
     port: number;
@@ -24,7 +25,7 @@ declare module "restify" {
     contentLength: number;
     contentType: string;
     href: () => string;
-    log: bunyanLog.Logger;
+    log: bunyan.Logger;
     id: string;
     path: () => string;
     query: any;
@@ -194,6 +195,7 @@ declare module "restify" {
   export class ResourceNotFoundError { constructor(message: any); }
   export class WrongAcceptError { constructor(message: any); }
   export class UnsupportedMediaTypeError { constructor(message: any); }
+  export class RequestTimeoutError { constructor(message: any); }
 
   export function acceptParser(parser: any): RequestHandler;
   export function authorizationParser(): RequestHandler;
@@ -211,7 +213,6 @@ declare module "restify" {
   export function fullResponse(): RequestHandler;
   export var defaultResponseHeaders : any;
   export var CORS: CORS;
-  export var bunyan: any;
 
   export module pre {
       export function pause(): RequestHandler;
