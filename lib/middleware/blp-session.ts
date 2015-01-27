@@ -1,5 +1,6 @@
 /// <reference path='../../typings/tsd.d.ts' />
 
+import Promise = require('bluebird');
 import bunyan = require('bunyan');
 import restify = require('restify');
 import blpapi = require('../blpapi-wrapper');
@@ -8,10 +9,7 @@ import interfaces = require('../interface');
 
 // CONSTANTS
 var DEFAULT_ID = '__default__';
-var DEFAULT_SESSION_OPTIONS = {
-    serverHost: conf.get('api.host'),
-    serverPort: conf.get('api.port')
-};
+var DEFAULT_SESSION_OPTIONS = conf.get('sessionOptions');
 
 // GLOBALS
 var SESSION_STORE: {[index: string]: Promise<blpapi.Session>} = {};
@@ -55,5 +53,18 @@ export function getSession(req: interfaces.IOurRequest,
         }).catch((err: Error): void => {
             req.log.error(err, 'Error getting blpSession.');
             return next(new restify.InternalError(err.message));
+        });
+}
+
+export function getSocketSession(socket: interfaces.ISocket): Promise<interfaces.ISocket>
+{
+    return createSession(DEFAULT_ID)
+        .then((session: blpapi.Session): interfaces.ISocket => {
+            socket.log.debug('blpSession retrieved.');
+            socket.blpSession = session;
+            return socket;
+        }).catch((err: Error): any => {
+            socket.log.error(err, 'Error getting blpSession.');
+            throw err;
         });
 }

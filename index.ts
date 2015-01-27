@@ -7,13 +7,16 @@ import conf = require('./lib/config');
 import blpSession = require('./lib/middleware/blp-session');
 import requestHandler = require('./lib/middleware/request-handler');
 import util = require('./lib/middleware/util');
+import sio = require('socket.io');
+import webSocket = require('ws');
+import webSocketHandler = require('./lib/websocket/websocket-handler');
 
 var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 
 // Create server.
 var serverOptions = conf.get('serverOptions');
 serverOptions.log = logger;     // Setup bunyan logger
-var server = restify.createServer(serverOptions);
+var server: restify.Server = restify.createServer(serverOptions);
 
 // Middleware
 server.pre(util.resetContentType);
@@ -43,3 +46,25 @@ server.on('listening', (): void => {
     logger.info('http server listening on', conf.get('port') );
 });
 server.on('after', util.after);
+
+// Socket.IO
+if (conf.get('websocket.socket-io.enable')) {
+    var serverSio: restify.Server = restify.createServer(conf.get('serverOptions'));
+    serverSio.listen(conf.get('websocket.socket-io.port'));
+    serverSio.on('listening', (): void => {
+        logger.info('socket.io server listening on', conf.get('websocket.socket-io.port') );
+    });
+    var io: SocketIO.Namespace = sio(serverSio.server).of('/subscription');
+    io.on('connection', webSocketHandler.sioOnConnect);
+}
+
+// ws
+if (conf.get('websocket.ws.enable')) {
+    var serverWS: restify.Server = restify.createServer(conf.get('serverOptions'));
+    serverWS.listen(conf.get('websocket.ws.port'));
+    serverWS.on('listening', (): void => {
+        logger.info('ws server listening on', conf.get('websocket.ws.port') );
+    });
+    var wss = new webSocket.Server({server: serverWS.server});
+    wss.on('connection', webSocketHandler.wsOnConnect);
+}

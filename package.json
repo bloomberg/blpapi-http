@@ -11,7 +11,10 @@
     "debug": "^2.1.0",
     "lodash": "^2.4.1",
     "optimist": "^0.6.1",
-    "restify": "^2.8.4"
+    "restify": "^2.8.4",
+    "socket.io": "^1.2.1",
+    "ws": "^0.6.4",
+    "node-uuid": "^1.4.2"
   },
   "devDependencies": {
     "tsd": "^0.5.7",
