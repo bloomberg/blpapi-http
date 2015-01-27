@@ -6,22 +6,28 @@
   "bundle": "typings/tsd.d.ts",
   "installed": {
     "bluebird/bluebird.d.ts": {
-      "commit": "8d809865495437fc8563a3e04f707731acf805bf"
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
     },
-    "node/node.d.ts": {
-      "commit": "8d809865495437fc8563a3e04f707731acf805bf"
+    "convict/convict.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
     },
-    "debug/debug.d.ts": {
-      "commit": "a6b1e4ff841e617e3d449189f82562143d98400d"
-    },
-    "morgan/morgan.d.ts": {
-      "commit": "7c194584f39e29c7f150e0bfc1686a796efc19be"
-    },
-    "express/express.d.ts": {
-      "commit": "7c194584f39e29c7f150e0bfc1686a796efc19be"
+    "bunyan/bunyan.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
     },
     "lodash/lodash.d.ts": {
-      "commit": "0d595e843d872c24d8f45dd7df9c15404e6daff4"
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
+    },
+    "node/node.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
+    },
+    "debug/debug.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
+    },
+    "optimist/optimist.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
+    },
+    "restify/restify.d.ts": {
+      "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
     }
   }
 }
