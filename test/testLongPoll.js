@@ -6,10 +6,12 @@ var fs = require('fs');
 var path = require('path');
 
 // Config
-var NUM_CLIENT = 10;
+var NUM_CLIENT = 1;
 var MAX_DELAY = 500;
-var NUM_REQUEST = Infinity;
+//var NUM_REQUEST = Infinity;
+var NUM_REQUEST = 100;
 var PRINT_OUTPUT = false;
+//var HOST = 'https://54.174.49.59';
 var HOST = 'https://localhost:3000';
 var caFile = path.resolve(__dirname, '../keys/bloomberg-ca-crt.pem');
 var keyFile = path.resolve(__dirname, '../keys/client-key.pem');
@@ -44,27 +46,46 @@ function clientRequest(clientId) {
               }
     console.log('Client Id: ' + clientId + '. Start testing.');
 
-    makeRequest();
+    // Subscribe
+    request.postAsync({
+        url : HOST + '/subscribe',
+        body : [
+                { security: 'AAPL US Equity', correlationId: 0, fields: ['LAST_PRICE'] },
+                { security: 'GOOG US Equity', correlationId: 1, fields: ['LAST_PRICE'] }
+               ],
+        pool: agent,
+        json: true,
+        agentOptions: opt
+    })
+    .then(function(contents) {
+        console.log(contents[1]);
+        if (contents[1].status === undefined) {
+            process.exit();
+        }
+    })
+    .then(function() {
+        longPolling();
+    })
+    .catch(function(err) {
+        console.log(err);
+        process.exit()
+    });
 
-    function makeRequest() {
+    function longPolling() {
         var delay = Math.floor((Math.random() * MAX_DELAY));
         var t = process.hrtime();
-        request.postAsync({
-            url : HOST + '/request/blp/refdata/HistoricalData',
-            body :  {
-                        securities: ['IBM US Equity', 'AAPL US Equity'],
-                        fields: ['PX_LAST', 'OPEN', 'EPS_ANNUALIZED'],
-                        startDate: '20120101',
-                        endDate: '20120301',
-                        periodicitySelection: 'DAILY'
-                    },
+        request.getAsync({
+            url : HOST + '/poll?pollid=' + counter,
             pool: agent,
             json: true,
             agentOptions: opt
         })
         .then(function(contents) {
             var diff = process.hrtime(t);
-            console.log('Client Id: ' + clientId + '. Response: ' + counter++ + '. Time: ' + (diff[0] * 1e3 + diff[1] / 1e6) + 'ms');
+            console.log('Client Id: ' + clientId + '. Response: ' + counter + '. Time: ' + (diff[0] * 1e3 + diff[1] / 1e6) + 'ms');
+            if (contents[0].statusCode === 200 && !contents[1].status) {
+                ++counter;
+            }
             if (PRINT_OUTPUT) {
                 console.log(contents[1]);
             }
@@ -72,18 +93,29 @@ function clientRequest(clientId) {
         .delay(delay)
         .then(function(){
             if (counter < NUM_REQUEST) {
-                makeRequest();
+                longPolling();
+            }
+            else {
+                request.getAsync({
+                    url : HOST + '/unsubscribe',
+                    //body : JSON.stringify({ correlationIds: [0] }),
+                    pool: agent,
+                    json: true,
+                    agentOptions: opt
+                })
+                .then(function(contents) {
+                    console.log('Unsubscribed.');
+                    if (PRINT_OUTPUT) {
+                        console.log(contents[1]);
+                    }
+                    process.exit();
+                });
             }
         })
         .catch(function(err) {
             console.log(err);
             process.exit();
         });
+
     };
-
-}
-
-
-
-
-
+};

@@ -287,7 +287,7 @@ export class Session extends events.EventEmitter {
         return Promise.all(_.map(subscriptionsToServices(subscriptions), (uri): Promise<void> => {
             return this.openService(uri);
         })).then((): void => {
-            log('Subscribing to: ' + JSON.stringify(subscriptions));
+            //log('Subscribing to: ' + JSON.stringify(subscriptions));
 
             this.session.subscribe(_.map(subscriptions, (s): blpapi.Subscription => {
                 var cid = this.nextCorrelatorId();
@@ -313,7 +313,7 @@ export class Session extends events.EventEmitter {
     unsubscribe(subscriptions: Subscription[]): void {
         this.validateSession();
 
-        log('Unsubscribing: ' + JSON.stringify(subscriptions));
+        //log('Unsubscribing: ' + JSON.stringify(subscriptions));
 
         var cids: number[] = [];
         _.forEach(subscriptions, (s, i): void => {
@@ -344,5 +344,4 @@ export class Session extends events.EventEmitter {
         }).valueOf());
     }
 }
-
 

@@ -1,3 +1,5 @@
+/// <reference path="../typings/tsd.d.ts" />
+
 import fs = require('fs');
 import path = require('path');
 import convict = require('convict');
@@ -40,7 +42,7 @@ class Config {
                 arg: 'port'
             },
             'expiration' : {
-                doc: 'Auto-expiration period of session in seconds',
+                doc: 'Auto-expiration period of blpSession in seconds',
                 format: 'integer',
                 default: 5
             },
@@ -141,6 +143,56 @@ class Config {
                     default: 50,
                     arg: 'throttle-rate'
                 }
+            },
+            'longPoll': {
+                'maxBufferSize': {
+                    doc: 'Maximum buffer size for subscription data',
+                    format: 'integer',
+                    default: 50,
+                    arg: 'longPoll-maxBufferSize'
+                },
+                'pollFrequency': {
+                    doc: 'Data checking frequency when poll request arrives',
+                    format: 'integer',
+                    default: 100,
+                    arg: 'longPoll-pollFrequency'
+                },
+                'pollTimeout': {
+                    doc: 'Server side poll request timeout in ms',
+                    format: 'integer',
+                    default: 30000,
+                    arg: 'longPoll-pollTimeout'
+                }
+            },
+            'webSocket': {
+                'socket-io': {
+                    'enable': {
+                        doc: 'Boolean option to control whether to run socket.io server',
+                        format: Boolean,
+                        default: true,
+                        arg: 'webSocket-socket-io-enable'
+                    },
+                    'port': {
+                        doc: 'The socket io port to listen on',
+                        format: 'port',
+                        default: 3001,
+                        arg: 'webSocket-socket-io-port'
+                    },
+                },
+                'ws': {
+                    'enable': {
+                        doc: 'Boolean option to control whether to run ws server',
+                        format: Boolean,
+                        default: true,
+                        arg: 'webSocket-ws-enable'
+                    },
+                    'port': {
+                        doc: 'The ws port to listen on',
+                        format: 'port',
+                        default: 3002,
+                        arg: 'webSocket-ws-port'
+                    },
+                }
             }
         });
 
@@ -206,7 +258,7 @@ class Config {
         // HTTP(S) server options
         Config.otherConf['serverOptions'] = {
             name: Config.convictConf.get('service.name'),
-            version: Config.convictConf.get('service.version'),
+            version: [Config.convictConf.get('service.version')],
             acceptable: ['application/json']
         };
         if (Config.convictConf.get('https.enable')) {
@@ -221,6 +273,12 @@ class Config {
                 rejectUnauthorized: true
             };
         }
+
+        // BLPAPI Session options
+        Config.otherConf['sessionOptions'] = {
+            serverHost: Config.convictConf.get('api.host'),
+            serverPort: Config.convictConf.get('api.port')
+        };
     }
 
     public static get(name: string): any {
