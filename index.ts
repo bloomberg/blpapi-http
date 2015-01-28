@@ -14,12 +14,12 @@ import WebSocketHandler = require('./lib/WebSocketHandler');
 
 var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 var blpSession: BAPI.Session;
+var apiSession: APISess.APISession;
+var requestHandler: RequestHandler;
+var webSocketHandler: WebSocketHandler;
 
 createSession()
 .then((): void => {
-    var apiSession = new APISess.APISession(blpSession);
-    var requestHandler = new RequestHandler(blpSession);
-    var webSocketHandler = new WebSocketHandler(blpSession);
 
     // Create server.
     var serverOptions = conf.get('serverOptions');
@@ -132,6 +132,9 @@ function createSession (): Promise<any> {
     return blpSession.start()
     .then((): void => {
         logger.info('BLPAPI Session connected.');
+        apiSession = new APISess.APISession(blpSession);
+        requestHandler = new RequestHandler(blpSession);
+        webSocketHandler = new WebSocketHandler(blpSession);
     }).catch( (err: Error): void => {
         logger.fatal(err, 'error connecting blpSession.');
         // If we can't connect the blpSession, terminate the server
