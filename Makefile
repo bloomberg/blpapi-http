@@ -1,10 +1,8 @@
 SRCS_TS =
 SRCS_JS_FROM_TS =
 
-TOP_LEVEL_TS_FILE = index.ts
-
 SRCS_TS += index.ts
-SRCS_TS += $(wildcard lib/*.ts)
+SRCS_TS += $(shell find lib -type f -name '*.ts')
 
 SRCS_JS_FROM_TS += $(patsubst %.ts,%.js,$(SRCS_TS))
 
@@ -38,6 +36,5 @@ $(TSLINT_TARGET): $(SRCS_TS)
 	$(TSLINT) $(foreach file,$(SRCS_TS),-f $(file))
 	@$(TOUCH) $(TSLINT_TARGET)
 
-$(SRCS_JS_FROM_TS): $(SRCS_TS)
-	$(QUIET_TSC) $(TS_TO_JS) $(TOP_LEVEL_TS_FILE)
-
+$(SRCS_JS_FROM_TS): %.js: %.ts
+	$(TS_TO_JS) $<
