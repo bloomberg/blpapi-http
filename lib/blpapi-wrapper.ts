@@ -19,10 +19,33 @@ export interface RequestCallback {
     (err: Error, data?: any, isFinal?: boolean): void;
 }
 
-export interface Subscription extends events.EventEmitter {
+export class Subscription extends events.EventEmitter {
     security: string;
     fields: string[];
-    options?: any;
+    options: any = null;
+
+    constructor(security: string, fields: string[], options?: any) {
+        super();
+
+        this.security = security;
+        this.fields = fields;
+        if (3 === arguments.length) {
+            this.options = options;
+        }
+    }
+
+    private toJSON(): Object {
+        var result: { security: string; fields: string[]; options?: any; } = {
+            security: this.security,
+            fields: this.fields
+        };
+
+        if (null !== this.options) {
+            result.options = this.options;
+        }
+
+        return result;
+    }
 }
 
 export class BlpApiError implements Error {
