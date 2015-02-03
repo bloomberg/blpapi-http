@@ -48,7 +48,7 @@ export function get(name: string): any
             env: 'BLPAPI_HTTP_PORT',
             arg: 'port'
         },
-        'expiration' : {
+        'expiration': {
             doc: 'Auto-expiration period of blpSession in seconds',
             format: 'integer',
             default: 5
@@ -149,6 +149,36 @@ export function get(name: string): any
                 format: 'integer',
                 default: 50,
                 arg: 'throttle-rate'
+            }
+        },
+        'websocket': {
+            'socket-io': {
+                'enable': {
+                    doc: 'Boolean option to control whether to run socket.io server',
+                    format: Boolean,
+                    default: true,
+                    arg: 'websocket-socket-io-enable'
+                },
+                'port': {
+                    doc: 'The socket io port to listen on',
+                    format: 'port',
+                    default: 3001,
+                    arg: 'websocket-socket-io-port'
+                },
+            },
+            'ws': {
+                'enable': {
+                    doc: 'Boolean option to control whether to run ws server',
+                    format: Boolean,
+                    default: true,
+                    arg: 'websocket-ws-enable'
+                },
+                'port': {
+                    doc: 'The ws port to listen on',
+                    format: 'port',
+                    default: 3002,
+                    arg: 'websocket-ws-port'
+                },
             }
         }
     });
