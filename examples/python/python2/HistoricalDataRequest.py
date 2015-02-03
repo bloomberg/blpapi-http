@@ -1,10 +1,33 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2.7
 
-import argparse
-import json
+"""
+    HistoricalDataRequest.py - retrieve a set of historical data from the BLPAPI
+    HTTP interface.
+
+    For usage instructions, run
+            ./HistoricalDataRequest.py -h
+"""
+
 import sys
+if sys.version_info[:2] != (2, 7):
+    print 'This example is only compatible with 2.7.x. Please install this ' \
+          'version or modify the example to be compatible with your version.'
+    sys.exit(1)
+
 import httplib
+import json
 import pprint
+try:
+    import argparse
+except ImportError as e:
+    print 'This script requires argparse, available in 2.7.x.'
+    sys.exit(1)
+try:
+    import ssl
+except ImportError as e:
+    print 'SSL is not configured for your Python package, which is necessary ' \
+          'to run this code sample'
+    sys.exit(1)
 
 
 data = {
@@ -24,11 +47,16 @@ def request(args):
                                    cert_file=args.cert)
     headers = {'Content-Type': 'application/json'}
     conn.set_debuglevel(4)
-    conn.request('POST', '/request/blp/refdata/HistoricalData', json.dumps(data), headers)
-    response = conn.getresponse()
+    try:
+        conn.request('POST', '/request/blp/refdata/HistoricalData', json.dumps(data), headers)
+        response = conn.getresponse()
 
-    print response.status, response.reason
-    pprint.pprint(json.loads(response.read()))
+        print response.status, response.reason
+        pprint.pprint(json.loads(response.read()))
+    except Exception as e:
+        print e
+        return 1
+    return 0
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Makes a historical data ' \
