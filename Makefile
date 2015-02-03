@@ -12,6 +12,7 @@ TSC_COMMON = --module commonjs --target ES5 --sourceMap --noImplicitAny --noEmit
 TS_TO_JS = $(TSC) $(TSC_COMMON)
 
 TSLINT := $(addprefix $(BIN_PREFIX)/,tslint)
+TSLINT_CONFIG := tslint.json
 TSLINT_TARGET = .tslint.d
 
 RM ?= rm -f
@@ -31,7 +32,7 @@ clean:
 	$(RM) $(SRCS_JS_FROM_TS) $(patsubst %.js,%.js.map,$(SRCS_JS_FROM_TS))
 	$(RM) $(TSC_TARGET) $(TSLINT_TARGET)
 
-$(TSLINT_TARGET): $(SRCS_TS)
+$(TSLINT_TARGET): $(SRCS_TS) $(TSLINT_CONFIG)
 	@$(RM) $(TSLINT_TARGET)
 	$(TSLINT) $(foreach file,$(SRCS_TS),-f $(file))
 	@$(TOUCH) $(TSLINT_TARGET)

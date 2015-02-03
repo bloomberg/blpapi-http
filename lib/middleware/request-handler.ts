@@ -112,9 +112,9 @@ export function onRequest(req: Interface.IOurRequest,
         return next(new restify.InternalError('Error not find blpSession.'));
     }
 
-    (() : Promise<any> => {
-        return (new Promise<any>((resolve : () => void,
-                                  reject : (error : any) => void) : void => {
+    ((): Promise<any> => {
+        return (new Promise<any>((resolve: () => void,
+                                  reject: (error: any) => void): void => {
             req.blpSession.request('//' + req.params.ns + '/' + req.params.svName,
                 req.params.reqName,
                 req.body,
