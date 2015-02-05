@@ -35,11 +35,13 @@ export class Subscription extends events.EventEmitter {
     }
 
     private toJSON(): Object {
+        // bug in tslint 2.1.0(issue 292). Temp disable it.
+        /* tslint:disable variables-before-functions */
         var result: { security: string; fields: string[]; options?: any; } = {
             security: this.security,
             fields: this.fields
         };
-
+        /* tslint:enable */
         if (null !== this.options) {
             result.options = this.options;
         }
