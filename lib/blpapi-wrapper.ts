@@ -15,7 +15,7 @@ var trace = debug('blpapi-wrapper:trace');
 var log = debug('blpapi-wrapper:debug');
 
 // PUBLIC TYPES
-export interface RequestCallback {
+export interface IRequestCallback {
     (err: Error, data?: any, isFinal?: boolean): void;
 }
 
@@ -81,7 +81,7 @@ function reqName2RespName(name: string): string {
 }
 
 function subscriptionsToServices(subscriptions: Subscription[]): string[] {
-    return _(subscriptions).map((subscription): string => {
+    return _(subscriptions).map((subscription: Subscription): string => {
         var serviceRegex = /^\/\/blp\/[a-z]+/;
         var match = serviceRegex.exec(subscription.security);
         // XXX: note that we shoud probably capture what the default service is to use when
@@ -99,7 +99,7 @@ export class Session extends events.EventEmitter {
     // DATA
     private session: blpapi.Session;
     private eventListeners: {[index: string]: {[index: number]: Function}} = {};
-    private requests: {[index: string]: RequestCallback} = {};
+    private requests: {[index: string]: IRequestCallback} = {};
     private subscriptions: {[index: string]: Subscription} = {};
     private services: {[index: string]: Promise<void>} = {};
     private correlatorId: number = 0;
@@ -164,7 +164,7 @@ export class Session extends events.EventEmitter {
         return thenable;
     }
 
-    private requestHandler(cb: RequestCallback, m: any): void {
+    private requestHandler(cb: IRequestCallback, m: any): void {
         var eventType = m.eventType;
         var isFinal = (EVENT_TYPE.RESPONSE === eventType);
 
@@ -188,6 +188,8 @@ export class Session extends events.EventEmitter {
         log('Session terminating');
         trace(ev);
 
+        // bug in tslint 2.1.0(issue 292). Temp disable it.
+        /* tslint:disable variables-before-functions */
         _([{prop: 'eventListeners', cleanupFn: (eventName: string): void => {
             this.session.removeAllListeners(eventName);
          }},
@@ -197,12 +199,13 @@ export class Session extends events.EventEmitter {
          {prop: 'subscriptions', cleanupFn: (k: string): void => {
             this.subscriptions[k].emit('error', new Error('session terminated'));
          }}
-        ]).forEach((table): void => {
-            Object.getOwnPropertyNames(this[table.prop]).forEach((key): void => {
+       ]).forEach((table: {prop: string; cleanupFn: (s: string) => void}): void => {
+            Object.getOwnPropertyNames(this[table.prop]).forEach((key: string): void => {
                 table.cleanupFn(key);
             });
             this[table.prop] = null;
         });
+        /* tslint:enable */
 
         if (!this.stopped) {
             this.stopped = Promise.resolve();
@@ -274,7 +277,7 @@ export class Session extends events.EventEmitter {
         }).nodeify(cb);
     }
 
-    request(uri: string, name: string, request: any, callback: RequestCallback): void {
+    request(uri: string, name: string, request: any, callback: IRequestCallback): void {
         this.validateSession();
 
         var correlatorId = this.nextCorrelatorId();
@@ -289,7 +292,7 @@ export class Session extends events.EventEmitter {
             this.listen(responseEventName,
                         correlatorId,
                         this.requestHandler.bind(this, callback));
-        }).catch((ex): void => {
+        }).catch((ex: Error): void => {
             delete this.requests[correlatorId];
             callback(ex);
         });
@@ -298,9 +301,9 @@ export class Session extends events.EventEmitter {
     subscribe(subscriptions: Subscription[], cb?: (err: any) => void): Promise<void> {
         this.validateSession();
 
-        _.forEach(subscriptions, (s, i): void => {
+        _.forEach(subscriptions, (s: Subscription, i: number): void => {
             // XXX: O(N) - not critical but note to use ES6 Map in the future
-            var cid = _.findKey(this.subscriptions, (other): boolean => {
+            var cid = _.findKey(this.subscriptions, (other: Subscription): boolean => {
                 return s === other;
             });
 
@@ -309,12 +312,14 @@ export class Session extends events.EventEmitter {
             }
         });
 
-        return Promise.all(_.map(subscriptionsToServices(subscriptions), (uri): Promise<void> => {
+        return Promise.all(_.map(subscriptionsToServices(subscriptions),
+                                 (uri: string): Promise<void> =>
+        {
             return this.openService(uri);
         })).then((): void => {
             log('Subscribing to: ' + JSON.stringify(subscriptions));
 
-            this.session.subscribe(_.map(subscriptions, (s): blpapi.Subscription => {
+            this.session.subscribe(_.map(subscriptions, (s: Subscription): blpapi.Subscription => {
                 var cid = this.nextCorrelatorId();
 
                 // XXX: yes, this is a side-effect of map, but it is needed for performance reasons
@@ -329,7 +334,10 @@ export class Session extends events.EventEmitter {
                     correlation: cid,
                     fields: s.fields
                 };
-                'options' in s && (result.options = s.options);
+
+                if ('options' in s) {
+                    result.options = s.options;
+                }
                 return result;
             }));
         }).nodeify(cb);
@@ -341,9 +349,9 @@ export class Session extends events.EventEmitter {
         log('Unsubscribing: ' + JSON.stringify(subscriptions));
 
         var cids: number[] = [];
-        _.forEach(subscriptions, (s, i): void => {
+        _.forEach(subscriptions, (s: Subscription, i: number): void => {
             // XXX: O(N) - not critical but note to use ES6 Map in the future
-            var cid = _.findKey(this.subscriptions, (other): boolean => {
+            var cid = _.findKey(this.subscriptions, (other: Subscription): boolean => {
                 return s === other;
             });
 
@@ -354,13 +362,13 @@ export class Session extends events.EventEmitter {
             }
         });
 
-        this.session.unsubscribe(_(cids).forEach((cid): void => {
+        this.session.unsubscribe(_(cids).forEach((cid: number): void => {
             process.nextTick((): void => {
                 this.subscriptions[cid].emit('end');
                 delete this.subscriptions[cid];
             });
             this.unlisten('MarketDataEvents', cid);
-        }).map((cid): blpapi.Subscription => {
+        }).map((cid: number): blpapi.Subscription => {
             return <blpapi.Subscription>{
                 security: ' ',
                 correlation: cid,
