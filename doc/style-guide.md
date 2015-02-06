@@ -9,6 +9,7 @@ This is the TypeScript style guide that captures everything not checked by
   1. [Files](#files)
   1. [Indentation](#indentation)
   1. [Line Length](#line-length)
+  1. [Expressions](#expressions)
 
 
 ## Introduction
@@ -44,3 +45,52 @@ quaility.
     character limit.
 
 **[top](#table-of-contents)**
+
+## Expressions
+
+  - Expressions in return statements should be surrounded by parenthesis for clarity.
+    - If the expression contains one operand, parenthesis are not necessary.
+    - Use surrounding parenthesis around the conditional expression of a *ternary
+      operator*; not for the entire ternary expression.
+  ```typescript
+  // bad
+  function foo(a: number) {
+      return a > 1;
+  }
+
+  // bad
+  function foo(a: number) {
+      return a > 1 ? true : false;
+  }
+
+  // OK
+  function foo(a: number) {
+      return ((a > 1) ? -1 : 0);
+  }
+
+  // OK
+  function isZero(a: number) {
+      return (!a);
+  }
+
+  // good
+  function foo(a: number) {
+      return (a > 1);
+  }
+
+  // good
+  function foo(a: number) {
+      return (a > 1) ? -1 : 0;
+  }
+
+  // good
+  function isZero(a: number) {
+      return !a;
+  }
+  ```
+
+**[top](#table-of-contents)**
+
+<!--
+vim: tw=99
+-->
