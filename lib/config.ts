@@ -191,7 +191,7 @@ export function get(name: string): any
     // Build options object
     // Bunyan logger options
     // Override default bunyan response serializer
-    bunyan.stdSerializers['res'] = function(res): any {
+    bunyan.stdSerializers['res'] = function(res: any): any {
         if (!res || !res.statusCode) {
             return res;
         }
@@ -201,7 +201,7 @@ export function get(name: string): any
         };
     };
     // Add client cert serializer
-    bunyan.stdSerializers['cert'] = function(cert): any {
+    bunyan.stdSerializers['cert'] = function(cert: any): any {
         return cert && {
             CN: cert.subject.CN,
             fingerprint: cert.fingerprint

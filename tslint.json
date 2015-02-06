@@ -1,12 +1,15 @@
 {
     "rules": {
+        "class-name": true,
         "comment-format": {
             "check-space":     true,
             "check-lowercase": true
         },
         "curly": true,
         "eofline": true,
+        "forin": true,
         "indent": [true, 4],
+        "interface-name": true,
         "max-line-length": [true, 100],
         "member-ordering": [true,
             "static-before-instance",
@@ -21,8 +24,10 @@
         "no-eval": true,
         "no-trailing-whitespace": true,
         "no-unreachable": true,
+        "no-unused-expression": true,
         "no-unused-variables": true,
         "no-use-before-declare": true,
+        "no-var-requires": true,
         "one-line": [true,
             "check-catch",
             "check-whitespace"
@@ -32,7 +37,10 @@
         "semicolon": true,
         "triple-equals": true,
         "typedef": [true,
-            "call-signature"
+            "call-signature",
+            "parameter",
+            "property-declaration",
+            "member-variable-declaration"
         ],
         "typedef-whitespace": [true, {
             "call-signature": "nospace",

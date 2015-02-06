@@ -87,7 +87,7 @@ export function elevateRequest (req: Interface.IOurRequest,
         });
     };
 
-    res.sendError = function(err, where, reason): Promise<void> {
+    res.sendError = function(err: any, where: string, reason: any): Promise<void> {
         var status: { source: string; category: string; errorCode: number};
         var r = err.data && err.data.reason;
         if (r) {
