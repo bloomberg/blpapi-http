@@ -1,8 +1,8 @@
-// usage: node historicalDataRequest.js <host>
+// usage: node HistoricalDataRequest.js [<host>]
 var https = require('https');
 var fs = require('fs');
 
-var host = process.argv[2] || '127.0.0.1';
+var host = process.argv[2] || "http-api.openbloomberg.com";
 var port = 443
 
 var options = {
