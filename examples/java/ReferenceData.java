@@ -57,14 +57,15 @@ public class ReferenceData {
                     "application/json; charset=utf8");
             DataOutputStream wr = new DataOutputStream(
                     urlConn.getOutputStream());
-            wr.writeBytes("{\"securities\": [ \"IBM US Equity\" ], "
-                    + "    \"fields\": [\"DY651\"] } ");
+            String jsonReq = "{\"securities\": [ \"IBM US Equity\" ], "
+                    + "    \"fields\": [\"DY651\"] } ";
+            wr.writeBytes(jsonReq);
             wr.flush();
             wr.close();
 
             int responseCode = urlConn.getResponseCode();
             System.out.println("\nSending 'POST' request to URL : " + url);
-            System.out.println("Post parameters : ");
+            System.out.println("Post parameters : " + jsonReq);
             System.out.println("Response Code : " + responseCode);
 
             BufferedReader in = new BufferedReader(new InputStreamReader(
