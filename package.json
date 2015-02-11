@@ -17,6 +17,7 @@
     "ws": "^0.6.4"
   },
   "devDependencies": {
+    "mocha": "^2.1.0",
     "tsd": "^0.5.7",
     "tslint": "^2.1.1",
     "typescript": "^1.4.1"
