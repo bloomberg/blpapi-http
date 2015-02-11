@@ -21,7 +21,7 @@ export function getCert(req: Interface.IOurRequest,
                         next: restify.Next): void
 {
     // Get client certificate details(only in https mode)
-    if (conf.get('https.enable')) {
+    if (req.isSecure()) {
         req.clientCert = (<tls.ClearTextStream>req.connection).getPeerCertificate();
     }
 
@@ -53,4 +53,17 @@ export function after(req: Interface.IOurRequest,
                       next: restify.Next): void
 {
     req.log.info({res: res}, 'Response sent.');
+}
+
+export function rejectHTTP(req: Interface.IOurRequest,
+                           res: Interface.IOurResponse,
+                           next: restify.Next): void
+{
+    if (!req.isSecure()) {
+        req.log.debug('Invalid request. HTTP request received where HTTPS is expected');
+        return next(new restify.BadRequestError(
+            'Invalid request. HTTP request received where HTTPS is expected'));
+    }
+
+    return next();
 }

@@ -7,7 +7,7 @@ import uuid = require('node-uuid');
 import SocketIO = require('socket.io');
 import webSocket = require('ws');
 import Subscription = require('../subscription/subscription');
-import SubscriptionStore = require('../subscription/subscription-store');
+import Map = require('../util/map');
 import conf = require('../config');
 import Interface = require('../interface');
 import blpSession = require('../middleware/blp-session');
@@ -58,8 +58,8 @@ function initialize(socket: Interface.ISocket): Promise<Interface.ISocket>
 function setup(socket: Interface.ISocket): void
 {
     // Create subscriptions store
-    var activeSubscriptions = new SubscriptionStore<Subscription>();
-    var receivedSubscriptions = new SubscriptionStore<Subscription>();
+    var activeSubscriptions = new Map<Subscription>();
+    var receivedSubscriptions = new Map<Subscription>();
 
     // Clean up sockets for cases where the underlying session terminated unexpectedly
     socket.blpSession.once('SessionTerminated', (): void => {
@@ -112,7 +112,7 @@ function setup(socket: Interface.ISocket): void
                                        s.fields,
                                        s.options);
             subscriptions.push(sub);
-            receivedSubscriptions.add(sub);
+            receivedSubscriptions.set(sub.correlationId, sub);
 
             // Add event listener for each subscription
             sub.on('data', (data: any): void => {
@@ -132,7 +132,7 @@ function setup(socket: Interface.ISocket): void
             .then((): void => {
                 if (socket.isConnected()) {
                     subscriptions.forEach((s: Subscription): void => {
-                        activeSubscriptions.add(s);
+                        activeSubscriptions.set(s.correlationId, s);
                     });
                     socket.log.debug('Subscribed');
                     socket.send('subscribed');
@@ -144,7 +144,7 @@ function setup(socket: Interface.ISocket): void
                     }
                     subscriptions.forEach((s: Subscription): void => {
                         s.removeAllListeners();
-                        receivedSubscriptions.delete(s);
+                        receivedSubscriptions.delete(s.correlationId);
                     });
                     socket.log.debug('Unsubscribed all active subscriptions');
                 }
@@ -152,7 +152,7 @@ function setup(socket: Interface.ISocket): void
                 socket.log.error(err, 'Error Subscribing');
                 subscriptions.forEach((s: Subscription): void => {
                     s.removeAllListeners();
-                    receivedSubscriptions.delete(s);
+                    receivedSubscriptions.delete(s.correlationId);
                 });
                 if (socket.isConnected()) {
                     socket.send('err', err);
@@ -179,7 +179,7 @@ function setup(socket: Interface.ISocket): void
         if (!data) {
             // If no correlation Id specified
             // the default behavior is to unsubscribe all active subscriptions
-            subscriptions = activeSubscriptions.getAll();
+            subscriptions = activeSubscriptions.values();
         } else {
             // If we do receive data object, first check if it is valid(empty list is INVALID)
             if (!_.has(data, 'correlationIds') ||
@@ -216,8 +216,8 @@ function setup(socket: Interface.ISocket): void
         }
         subscriptions.forEach((s: Subscription): void => {
             s.removeAllListeners();
-            activeSubscriptions.delete(s);
-            receivedSubscriptions.delete(s);
+            activeSubscriptions.delete(s.correlationId);
+            receivedSubscriptions.delete(s.correlationId);
         });
         receivedSubscriptions.size
             ? socket.send('unsubscribed')
@@ -229,7 +229,7 @@ function setup(socket: Interface.ISocket): void
     socket.on('disconnect', (): void => {
         // Unsubscribe all active subscriptions
         if (activeSubscriptions.size) {
-            var subscriptions: Subscription[] = activeSubscriptions.getAll();
+            var subscriptions: Subscription[] = activeSubscriptions.values();
             try {
                 socket.blpSession.unsubscribe(subscriptions);
             } catch (ex) {
@@ -237,8 +237,8 @@ function setup(socket: Interface.ISocket): void
             }
             subscriptions.forEach((s: Subscription): void => {
                 s.removeAllListeners();
-                activeSubscriptions.delete(s);
-                receivedSubscriptions.delete(s);
+                activeSubscriptions.delete(s.correlationId);
+                receivedSubscriptions.delete(s.correlationId);
             });
             socket.log.debug('Unsubscribed all active subscriptions');
         }

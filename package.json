@@ -4,21 +4,22 @@
   "description": "Bloomberg Open API HTTP Proxy",
   "main": "server.js",
   "dependencies": {
-    "blpapi": "^0.1.14",
+    "blpapi": "^1.0.0",
     "bluebird": "^2.8.2",
     "bunyan": "^1.2.3",
     "convict": "^0.6.1",
     "debug": "^2.1.0",
     "lodash": "^2.4.1",
+    "node-uuid": "^1.4.2",
     "optimist": "^0.6.1",
     "restify": "^2.8.4",
     "socket.io": "^1.2.1",
-    "ws": "^0.6.4",
-    "node-uuid": "^1.4.2"
+    "ws": "^0.6.4"
   },
   "devDependencies": {
+    "mocha": "^2.1.0",
     "tsd": "^0.5.7",
-    "tslint": "^2.1.0",
+    "tslint": "^2.1.1",
     "typescript": "^1.4.1"
   },
   "scripts": {
