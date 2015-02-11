@@ -35,13 +35,11 @@ export class Subscription extends events.EventEmitter {
     }
 
     private toJSON(): Object {
-        // bug in tslint 2.1.0(issue 292). Temp disable it.
-        /* tslint:disable variables-before-functions */
         var result: { security: string; fields: string[]; options?: any; } = {
             security: this.security,
             fields: this.fields
         };
-        /* tslint:enable */
+
         if (null !== this.options) {
             result.options = this.options;
         }
@@ -188,8 +186,6 @@ export class Session extends events.EventEmitter {
         log('Session terminating');
         trace(ev);
 
-        // bug in tslint 2.1.0(issue 292). Temp disable it.
-        /* tslint:disable variables-before-functions */
         _([{prop: 'eventListeners', cleanupFn: (eventName: string): void => {
             this.session.removeAllListeners(eventName);
          }},
@@ -205,7 +201,6 @@ export class Session extends events.EventEmitter {
             });
             this[table.prop] = null;
         });
-        /* tslint:enable */
 
         if (!this.stopped) {
             this.stopped = Promise.resolve();
