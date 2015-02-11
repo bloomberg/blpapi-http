@@ -180,6 +180,26 @@ export function get(name: string): any
                     arg: 'websocket-ws-port'
                 },
             }
+        },
+        'longpoll': {
+            'maxbuffersize': {
+                doc: 'Maximum buffer size for subscription data',
+                format: 'integer',
+                default: 50,
+                arg: 'longpoll-maxbuffersize'
+            },
+            'pollfrequency': {
+                doc: 'Data checking frequency when poll request arrives',
+                format: 'integer',
+                default: 100,
+                arg: 'longpoll-pollfrequency'
+            },
+            'polltimeout': {
+                doc: 'Server side poll request timeout in ms',
+                format: 'integer',
+                default: 30000,
+                arg: 'longpoll-polltimeout'
+            }
         }
     });
 
