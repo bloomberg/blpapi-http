@@ -1,0 +1,6 @@
+{
+    "query": "IBM",
+    "yellowKeyFilter": "YK_FILTER_CORP",
+    "languageOverride": "LANG_OVERRIDE_NONE",
+    "maxResults": 10
+}

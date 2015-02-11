@@ -71,13 +71,23 @@ var EVENT_TYPE = {
   , PARTIAL_RESPONSE: 'PARTIAL_RESPONSE'
 };
 
+// Map of HTTP request names to the BLAPI request and response names.
+var NAME_MAP: { [s: string]: { reqName: string; resName: string; } } = {
+    'FieldInfo':        { reqName: 'FieldInfoRequest',
+                          resName: 'fieldResponse' },
+    'FieldSearch':      { reqName: 'FieldInfoRequest',
+                          resName: 'fieldResponse' },
+    'InstrumentLookup': { reqName: 'instrumentListRequest',
+                          resName: 'InstrumentListResponse' },
+    'CurveLookup':      { reqName: 'curveListRequest',
+                          resName: 'CurveListResponse' },
+    'GovernmentLookup': { reqName: 'govtListRequest',
+                          resName: 'GovtListResponse' }
+};
+
 // ANONYMOUS FUNCTIONS
 function isObjectEmpty(obj: Object): boolean {
     return (0 === Object.getOwnPropertyNames(obj).length);
-}
-
-function reqName2RespName(name: string): string {
-    return name.replace(/^Field\w+/, 'field') + 'Response';
 }
 
 function subscriptionsToServices(subscriptions: Subscription[]): string[] {
@@ -284,8 +294,8 @@ export class Session extends events.EventEmitter {
         this.requests[correlatorId] = callback;
 
         this.openService(uri).then((): void => {
-            var responseEventName = reqName2RespName(name);
-            var requestName = name + 'Request';
+            var responseEventName = NAME_MAP[name].resName;
+            var requestName = NAME_MAP[name].reqName;
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
             this.session.request(uri, requestName, request, correlatorId);
