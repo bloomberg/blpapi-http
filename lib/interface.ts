@@ -3,16 +3,22 @@
 import restify = require('restify');
 import bunyan = require('bunyan');
 import BAPI = require('./blpapi-wrapper');
+import Session = require('./apisession/session');
 
 export interface IOurRequest extends restify.Request {
     clientCert?: any;
     blpSession: BAPI.Session;
+    apiSession?: Session;
+}
+
+export interface IBufferedData<T> {
+    buffer: T[];
+    overflow: number;
 }
 
 export interface IOurResponse extends restify.Response {
     sendChunk?: (data: any) => Promise<void>;
     sendEnd?: (status: any, message: string) => Promise<void>;
-    sendError?: (err: any, where: string, reason?: any) => Promise<void>;
 }
 
 export interface ISocket extends NodeJS.EventEmitter {

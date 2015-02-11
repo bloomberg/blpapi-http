@@ -10,6 +10,7 @@ import util = require('./lib/middleware/util');
 import sio = require('socket.io');
 import webSocket = require('ws');
 import webSocketHandler = require('./lib/websocket/websocket-handler');
+import apiSession = require('./lib/middleware/api-session');
 
 var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 
@@ -28,13 +29,28 @@ server.use(restify.gzipResponse());
 server.use(restify.fullResponse());
 server.use(restify.throttle(conf.get('throttleOptions')));
 server.use(restify.requestLogger());
+server.use(restify.queryParser());
 server.use(util.getCert);
 server.use(util.log);
 server.use(blpSession.getSession);
 server.use(requestHandler.elevateRequest);
 
 // Route
-server.post('/request/:ns/:svName/:reqName', requestHandler.onRequest);
+server.post('/request/:ns/:svName/:reqName',
+            requestHandler.onRequest);
+server.post('/subscribe',
+            util.rejectHTTP,
+            apiSession.createSession,
+            apiSession.handleSession,
+            requestHandler.onSubscribe);
+server.post('/unsubscribe',
+            util.rejectHTTP,
+            apiSession.handleSession,
+            requestHandler.onUnsubscribe);
+server.get('/poll',
+           util.rejectHTTP,
+           apiSession.handleSession,
+           requestHandler.onPoll);
 
 // Listen
 server.listen(conf.get('port'));
@@ -65,6 +81,6 @@ if (conf.get('websocket.ws.enable')) {
     serverWS.on('listening', (): void => {
         logger.info('ws server listening on', conf.get('websocket.ws.port') );
     });
-    var wss = new webSocket.Server({server: serverWS.server});
+    var wss = new webSocket.Server({ server: serverWS.server });
     wss.on('connection', webSocketHandler.wsOnConnect);
 }
