@@ -15,9 +15,15 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
 public class ReferenceData {
-
+    public static final String url =
+    "https://http-api.openbloomberg.com/request/blp/refdata/ReferenceData"; 
     public static void main(String[] args) {
-
+    
+        if (1 > args.length) {
+            System.out.println("Usage: ReferenceData <json file>");
+            return;
+        }
+        String jsonFile = args[0];
         try {
             KeyStore clientStore = KeyStore.getInstance("PKCS12");
             clientStore.load(new FileInputStream("client.p12"),
@@ -44,7 +50,7 @@ public class ReferenceData {
             HttpsURLConnection.setDefaultSSLSocketFactory(sslContext
                     .getSocketFactory());
             URL url = new URL(
-                    "https://http-api.openbloomberg.com/request/blp/refdata/ReferenceData");
+                    "https://localhost/index.html");
 
             HttpsURLConnection urlConn = (HttpsURLConnection) url
                 .openConnection();
@@ -57,15 +63,18 @@ public class ReferenceData {
                     "application/json; charset=utf8");
             DataOutputStream wr = new DataOutputStream(
                     urlConn.getOutputStream());
-            String jsonReq = "{\"securities\": [ \"IBM US Equity\" ], "
-                    + "    \"fields\": [\"DY651\"] } ";
-            wr.writeBytes(jsonReq);
+            FileInputStream fis = new FileInputStream(jsonFile);
+            byte[] buffer = new byte[1024];
+            int len = fis.read(buffer);
+            while (-1 < len) {
+                wr.write(buffer, 0, len);
+                len = fis.read(buffer);
+            }
             wr.flush();
             wr.close();
 
             int responseCode = urlConn.getResponseCode();
             System.out.println("\nSending 'POST' request to URL : " + url);
-            System.out.println("Post parameters : " + jsonReq);
             System.out.println("Response Code : " + responseCode);
 
             BufferedReader in = new BufferedReader(new InputStreamReader(
@@ -80,7 +89,6 @@ public class ReferenceData {
 
             System.out.println(response.toString());
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
 

@@ -9,6 +9,7 @@ client.p12:client.crt bloomberg.crt
 	openssl pkcs12 -export -password pass:secure -in client.crt -CAfile bloomberg.crt -inkey client.key -out client.p12
 
 bloomberg.jks:bloomberg.crt
+	$(RM) bloomberg.jks
 	$(JAVA_HOME)/bin/keytool -import -keystore bloomberg.jks -storepass secure2 -trustcacerts -file bloomberg.crt -noprompt
 
 clean:
