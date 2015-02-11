@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "tsd": "^0.5.7",
-    "tslint": "^2.1.0",
+    "tslint": "^2.1.1",
     "typescript": "^1.4.1"
   },
   "scripts": {
