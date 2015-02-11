@@ -37,6 +37,12 @@
     },
     "node-uuid/node-uuid.d.ts": {
       "commit": "b3324f69165309a3ea2bd02fd10e97841bf07c83"
+    },
+    "mocha/mocha.d.ts": {
+      "commit": "b0c9a94cadc4af42d2c365b2e425788109e8a0d5"
+    },
+    "should/should.d.ts": {
+      "commit": "b0c9a94cadc4af42d2c365b2e425788109e8a0d5"
     }
   }
 }
