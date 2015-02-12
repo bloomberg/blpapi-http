@@ -1,11 +1,12 @@
 # Java examples
 
-This is an example for helping hackathon people to develop java 
-applications with the blpapi-http.
+This example is a Java https client focusing on two points:
+  * converting and loading PEM certificates
+  * sending json in a POST request over the https connection
 
 ## Build
 
-I tried this on Linux and Cygwin.
+This has been tested on Linux and Cygwin.
 
 1. Required files:
   * client.crt: PEM certificate, the public key
