@@ -50,7 +50,7 @@ function clientRequest(clientId) {
         var delay = Math.floor((Math.random() * MAX_DELAY));
         var t = process.hrtime();
         request.postAsync({
-            url : HOST + '/request/blp/refdata/HistoricalData',
+            url : HOST + '/request?ns=blp&service=refdata&type=HistoricalData',
             body :  {
                         securities: ['IBM US Equity', 'AAPL US Equity'],
                         fields: ['PX_LAST', 'OPEN', 'EPS_ANNUALIZED'],

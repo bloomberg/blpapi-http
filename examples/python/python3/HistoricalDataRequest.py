@@ -17,7 +17,7 @@ data = {
 }
 
 def request(args):
-    req = urllib.request.Request('https://{}/request/blp/refdata/HistoricalData'.format(args.host))
+    req = urllib.request.Request('https://{}/request?ns=blp&service=refdata&type=HistoricalData'.format(args.host))
     req.add_header('Content-Type', 'application/json')
 
     ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)

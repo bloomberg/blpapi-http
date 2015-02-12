@@ -69,13 +69,27 @@ var EVENT_TYPE = {
   , PARTIAL_RESPONSE: 'PARTIAL_RESPONSE'
 };
 
+// Mapping of request types to response names to listen for.
+// The strings are taken from section A of the BLPAPI Developer's Guide, and are organized by
+// service.
+var REQUEST_TO_RESPONSE_MAP: { [index: string]: string; } = {
+    // //blp/refdata
+    'HistoricalDataRequest': 'HistoricalDataResponse',
+    'IntraDayTickRequest':   'IntraDayTickResponse',
+    'IntraDayBarRequest':    'IntraDayBarResponse',
+    'ReferenceDataRequest':  'ReferenceDataResponse',
+    'PortfolioDataRequest':  'PortfolioDataResponse',
+    'BeqsRequest':           'BeqsResponse',
+
+    // //blp/apiflds
+    'FieldInfoRequest':              'fieldResponse',
+    'FieldSearchRequest':            'fieldResponse',
+    'CategorizedFieldSearchRequest': 'categorizedFieldResponse'
+};
+
 // ANONYMOUS FUNCTIONS
 function isObjectEmpty(obj: Object): boolean {
     return (0 === Object.getOwnPropertyNames(obj).length);
-}
-
-function reqName2RespName(name: string): string {
-    return name.replace(/^Field\w+/, 'field') + 'Response';
 }
 
 function subscriptionsToServices(subscriptions: Subscription[]): string[] {
@@ -272,17 +286,19 @@ export class Session extends events.EventEmitter {
         }).nodeify(cb);
     }
 
-    request(uri: string, name: string, request: any, callback: IRequestCallback): void {
+    request(uri: string, requestName: string, request: any, callback: IRequestCallback): void {
         this.validateSession();
 
         var correlatorId = this.nextCorrelatorId();
         this.requests[correlatorId] = callback;
 
         this.openService(uri).then((): void => {
-            var responseEventName = reqName2RespName(name);
-            var requestName = name + 'Request';
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
+            if (!(requestName in REQUEST_TO_RESPONSE_MAP)) {
+                return callback(new Error('Unknown request type ' + requestName));
+            }
+            var responseEventName = REQUEST_TO_RESPONSE_MAP[requestName];
             this.session.request(uri, requestName, request, correlatorId);
             this.listen(responseEventName,
                         correlatorId,
@@ -372,5 +388,3 @@ export class Session extends events.EventEmitter {
         }).valueOf());
     }
 }
-
-

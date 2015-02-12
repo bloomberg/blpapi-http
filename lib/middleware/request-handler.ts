@@ -1,9 +1,11 @@
 /// <reference path='../../typings/tsd.d.ts' />
 
+import assert = require('assert');
 import Promise = require('bluebird');
 import _ = require('lodash');
 import restify = require('restify');
 import bunyan = require('bunyan');
+import util = require('util');
 import Interface = require('../interface');
 import conf = require('../config');
 import Subscription = require('../subscription/subscription');
@@ -186,16 +188,13 @@ export function onRequest(req: Interface.IOurRequest,
                           res: Interface.IOurResponse,
                           next: restify.Next): void
 {
-    if (!req.blpSession) {
-        req.log.error('Error not find blpSession.');
-        return next(new restify.InternalError('Error not find blpSession.'));
-    }
+    assert(req.blpSession, 'blpSession not found');
 
     ((): Promise<any> => {
         return (new Promise<any>((resolve: () => void,
                                   reject: (error: any) => void): void => {
-            req.blpSession.request('//' + req.params.ns + '/' + req.params.svName,
-                req.params.reqName,
+            req.blpSession.request(util.format('//%s/%s', req.query.ns, req.query.service),
+                req.query.type,
                 req.body,
                 (err: Error, data: any, last: boolean): void => {
                     if (err) {
@@ -222,16 +221,6 @@ export function onSubscribe(req: Interface.IOurRequest,
                             res: Interface.IOurResponse,
                             next: restify.Next): void
 {
-    if (!req.apiSession) {
-        req.log.error('No apisession object found.');
-        return next(new restify.InternalError('No apisession object found.'));
-    }
-
-    if (!req.blpSession) {
-        req.log.error('No blpsession object found.');
-        return next(new restify.InternalError('No blpsession object found.'));
-    }
-
     var subscriptions: Subscription[] = [];
     ((): Promise<void> => {
         // Check if req body is valid
@@ -309,14 +298,11 @@ export function onSubscribe(req: Interface.IOurRequest,
         });
 }
 
-export function onPoll(req: Interface.IOurRequest,
-                       res: Interface.IOurResponse,
-                       next: restify.Next): void
+export function onPollSubscriptions(req: Interface.IOurRequest,
+                                    res: Interface.IOurResponse,
+                                    next: restify.Next): void
 {
-    if (!req.apiSession) {
-        req.log.error('No apisession object found.');
-        return next(new restify.InternalError('No apisession object found.'));
-    }
+    assert(req.apiSession, 'apiSession not found');
 
     if (!req.apiSession.activeSubscriptions.size) {
         req.log.debug('No active subscriptions.');
@@ -326,13 +312,13 @@ export function onPoll(req: Interface.IOurRequest,
     var interval: NodeJS.Timer;
     var frequency: number = conf.get('longpoll.pollfrequency');
     var timeOut: number = conf.get('longpoll.polltimeout');
-    var pollId: number = _.parseInt(req.params.pollid);
+    var pollId: number = _.parseInt(req.query.pollid);
 
     var validateIdResult = validatePollId(req.apiSession, pollId);
     if (!validateIdResult.isValid) {
-        req.log.debug('Invalid Poll Id ' + req.params.pollid);
+        req.log.debug('Invalid Poll Id ' + req.query.pollid);
         return next(new restify.InvalidArgumentError('Invalid Poll Id '
-                                                     + req.params.pollid));
+                                                     + req.query.pollid));
     }
 
     var p: Promise<Object[]>;
@@ -416,16 +402,6 @@ export function onUnsubscribe(req: Interface.IOurRequest,
                               res: Interface.IOurResponse,
                               next: restify.Next): void
 {
-    if (!req.apiSession) {
-        req.log.error('No apisession object found.');
-        return next(new restify.InternalError('No apisession object found.'));
-    }
-
-    if (!req.blpSession) {
-        req.log.error('No blpsession object found.');
-        return next(new restify.InternalError('No blpsession object found.'));
-    }
-
     if (!req.apiSession.activeSubscriptions.size) {
         req.log.debug('No active subscriptions.');
         return next(new restify.BadRequestError('No active subscriptions.'));
@@ -493,4 +469,26 @@ export function onUnsubscribe(req: Interface.IOurRequest,
             req.log.error(err, 'Unsubscription error');
             return next(new restify.InternalError(err.message));
         });
+}
+
+export function onChangeSubscriptions(req: Interface.IOurRequest,
+                                      res: Interface.IOurResponse,
+                                      next: restify.Next): void
+{
+    assert(req.apiSession, 'apiSession not found');
+    assert(req.blpSession, 'blpSession not found');
+
+    switch (req.query.action) {
+        case 'start': {
+            return onSubscribe(req, res, next);
+        } break;
+        case 'stop': {
+            return onUnsubscribe(req, res, next);
+        } break;
+        default: {
+            var errorString = 'Invalid subscription action: ' + req.query.action;
+            req.log.error(errorString);
+            return next(new restify.BadRequestError(errorString));
+        } break;
+    }
 }

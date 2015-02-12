@@ -16,14 +16,14 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class ReferenceData {
     public static final String apiUrl = "https://http-api.openbloomberg.com"
-        + "/request/blp/refdata/ReferenceData";
+        + "/request?ns=blp&service=refdata&type=ReferenceData";
     public static final String keyStorePW = "secure";
     public static final String trustStorePW = "secure2";
     public static final String clientCert = "client.p12";
     public static final String bbCert = "bloomberg.jks";
 
     public static void main(String[] args) {
-    
+
         if (1 > args.length) {
             System.out.println("Usage: ReferenceData <json file>");
             return;
@@ -39,7 +39,7 @@ public class ReferenceData {
             kmf.init(clientStore, keyStorePW.toCharArray());
             KeyManager[] kms = kmf.getKeyManagers();
 
-            // load the public key of the CA from JKS, 
+            // load the public key of the CA from JKS,
             // so we can verify the server certificate.
             KeyStore trustStore = KeyStore.getInstance("JKS");
             trustStore.load(new FileInputStream(bbCert), trustStorePW.toCharArray());
@@ -56,7 +56,7 @@ public class ReferenceData {
 
             HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
             URL url = new URL(apiUrl);
-            
+
             // open connection to the server
             HttpsURLConnection urlConn = (HttpsURLConnection) url.openConnection();
 

@@ -242,8 +242,10 @@ export function get(name: string): any
     };
 
     // Restify bodyParser plugin options
-    otherConf['bodyParserOptions']
-        = { maxBodySize: convictConf.get('maxBodySize') };
+    otherConf['bodyParserOptions'] = {
+        maxBodySize: convictConf.get('maxBodySize'),
+        mapParams: false
+    };
 
     // Restify throttle plugin options
     otherConf['throttleOptions'] = {
