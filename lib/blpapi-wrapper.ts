@@ -69,18 +69,15 @@ var EVENT_TYPE = {
   , PARTIAL_RESPONSE: 'PARTIAL_RESPONSE'
 };
 
-// Map of HTTP request names to the BLAPI request and response names.
-var NAME_MAP: { [s: string]: { reqName: string; resName: string; } } = {
-    'FieldInfo':        { reqName: 'FieldInfoRequest',
-                          resName: 'fieldResponse' },
-    'FieldSearch':      { reqName: 'FieldInfoRequest',
-                          resName: 'fieldResponse' },
-    'InstrumentLookup': { reqName: 'instrumentListRequest',
-                          resName: 'InstrumentListResponse' },
-    'CurveLookup':      { reqName: 'curveListRequest',
-                          resName: 'CurveListResponse' },
-    'GovernmentLookup': { reqName: 'govtListRequest',
-                          resName: 'GovtListResponse' }
+// Map of BLPAPI request names to response event names.
+var REQUEST_NAMES_MAP: { [s: string]: string; } = {
+    'FieldInfoRequest':      'fieldResponse',
+    'FieldSearchRequest':    'fieldResponse',
+    'HistoricalDataRequest': 'HistoricalDataResponse',
+    'ReferenceDataRequest':  'ReferenceDataResponse',
+    'instrumentListRequest': 'InstrumentListResponse',
+    'curveListRequest':      'CurveListResponse',
+    'govtListRequest':       'GovtListResponse'
 };
 
 // ANONYMOUS FUNCTIONS
@@ -289,8 +286,11 @@ export class Session extends events.EventEmitter {
         this.requests[correlatorId] = callback;
 
         this.openService(uri).then((): void => {
-            var responseEventName = NAME_MAP[name].resName;
-            var requestName = NAME_MAP[name].reqName;
+            if (!(name in REQUEST_NAMES_MAP)) {
+                throw new Error('Unknown BLPAPI request name: ' + name);
+            }
+            var requestName = name;
+            var responseEventName = REQUEST_NAMES_MAP[name];
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
             this.session.request(uri, requestName, request, correlatorId);
