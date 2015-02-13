@@ -69,13 +69,20 @@ var EVENT_TYPE = {
   , PARTIAL_RESPONSE: 'PARTIAL_RESPONSE'
 };
 
+// Map of BLPAPI request names to response event names.
+var REQUEST_NAMES_MAP: { [s: string]: string; } = {
+    'FieldInfoRequest':      'fieldResponse',
+    'FieldSearchRequest':    'fieldResponse',
+    'HistoricalDataRequest': 'HistoricalDataResponse',
+    'ReferenceDataRequest':  'ReferenceDataResponse',
+    'instrumentListRequest': 'InstrumentListResponse',
+    'curveListRequest':      'CurveListResponse',
+    'govtListRequest':       'GovtListResponse'
+};
+
 // ANONYMOUS FUNCTIONS
 function isObjectEmpty(obj: Object): boolean {
     return (0 === Object.getOwnPropertyNames(obj).length);
-}
-
-function reqName2RespName(name: string): string {
-    return name.replace(/^Field\w+/, 'field') + 'Response';
 }
 
 function subscriptionsToServices(subscriptions: Subscription[]): string[] {
@@ -279,8 +286,11 @@ export class Session extends events.EventEmitter {
         this.requests[correlatorId] = callback;
 
         this.openService(uri).then((): void => {
-            var responseEventName = reqName2RespName(name);
-            var requestName = name + 'Request';
+            if (!(name in REQUEST_NAMES_MAP)) {
+                throw new Error('Unknown BLPAPI request name: ' + name);
+            }
+            var requestName = name;
+            var responseEventName = REQUEST_NAMES_MAP[name];
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
             this.session.request(uri, requestName, request, correlatorId);
