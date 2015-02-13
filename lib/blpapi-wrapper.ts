@@ -84,7 +84,23 @@ var REQUEST_TO_RESPONSE_MAP: { [index: string]: string; } = {
     // //blp/apiflds
     'FieldInfoRequest':              'fieldResponse',
     'FieldSearchRequest':            'fieldResponse',
-    'CategorizedFieldSearchRequest': 'categorizedFieldResponse'
+    'CategorizedFieldSearchRequest': 'categorizedFieldResponse',
+
+    // //blp/instruments
+    'instrumentListRequest': 'InstrumentListResponse',
+    'curveListRequest':      'CurveListResponse',
+    'govtListRequest':       'GovtListResponse',
+
+    // //blp/tasvc
+    'studyRequest':          'studyResponse'
+};
+
+// Mapping of service URIs to the event names to listen to when subscribed to these services.
+var SERVICE_TO_SUBSCRIPTION_EVENTS_MAP: { [uri: string]: string[]; } = {
+    '//blp/mktdata':  ['MarketDataEvents'],
+    '//blp/mktvwap':  ['MarketDataEvents'],
+    '//blp/mktbar':   ['MarketBarStart', 'MarketBarUpdate', 'MarketBarEnd'],
+    '//blp/pagedata': ['PageUpdate']
 };
 
 // ANONYMOUS FUNCTIONS
@@ -92,14 +108,23 @@ function isObjectEmpty(obj: Object): boolean {
     return (0 === Object.getOwnPropertyNames(obj).length);
 }
 
-function subscriptionsToServices(subscriptions: Subscription[]): string[] {
-    return _(subscriptions).map((subscription: Subscription): string => {
-        var serviceRegex = /^\/\/blp\/[a-z]+/;
-        var match = serviceRegex.exec(subscription.security);
-        // XXX: note that we shoud probably capture what the default service is to use when
-        //      reading in the session options.  However, when not specified, it is
-        //      '//blp/mktdata'.
-        return match ? match[0] : '//blp/mktdata';
+function getServiceForSecurity(security: string): string {
+    var serviceRegex = /^\/\/blp\/[a-z]+/;
+    var match = serviceRegex.exec(security);
+    // XXX: note that we shoud probably capture what the default service is to use when
+    //      reading in the session options.  However, when not specified, it is
+    //      '//blp/mktdata'.
+    return match ? match[0] : '//blp/mktdata';
+}
+
+type SubscriptionAndService = {
+    subscription: Subscription;
+    serviceUri: string;
+}
+
+function getUniqueServices(sass: SubscriptionAndService[]): string[] {
+    return _(sass).map((subscriptionAndService: SubscriptionAndService): string => {
+        return subscriptionAndService.serviceUri;
     }).uniq().valueOf();
 }
 
@@ -312,7 +337,9 @@ export class Session extends events.EventEmitter {
     subscribe(subscriptions: Subscription[], cb?: (err: any) => void): Promise<void> {
         this.validateSession();
 
-        _.forEach(subscriptions, (s: Subscription, i: number): void => {
+        var subscriptionsAndServices = _.forEach(subscriptions, (s: Subscription,
+                                                                 i: number): void =>
+        {
             // XXX: O(N) - not critical but note to use ES6 Map in the future
             var cid = _.findKey(this.subscriptions, (other: Subscription): boolean => {
                 return s === other;
@@ -321,23 +348,41 @@ export class Session extends events.EventEmitter {
             if (undefined !== cid) {
                 throw new Error('Subscription already exists for index ' + i);
             }
+
+        }).map((s: Subscription): SubscriptionAndService => {
+            return {
+                subscription: s,
+                serviceUri: getServiceForSecurity(s.security)
+            };
         });
 
-        return Promise.all(_.map(subscriptionsToServices(subscriptions),
+        return Promise.all(_.map(getUniqueServices(subscriptionsAndServices),
                                  (uri: string): Promise<void> =>
         {
             return this.openService(uri);
         })).then((): void => {
             log('Subscribing to: ' + JSON.stringify(subscriptions));
 
-            this.session.subscribe(_.map(subscriptions, (s: Subscription): blpapi.Subscription => {
+            this.session.subscribe(_.map(subscriptionsAndServices,
+                                         (sas: SubscriptionAndService): blpapi.Subscription =>
+            {
                 var cid = this.nextCorrelatorId();
-
+                var s = sas.subscription;
+                var serviceUri = sas.serviceUri;
                 // XXX: yes, this is a side-effect of map, but it is needed for performance reasons
                 //      until ES6 Map is available
                 this.subscriptions[cid] = s;
-                this.listen('MarketDataEvents', cid, (m: any): void => {
-                    s.emit('data', m.data, s);
+
+                // Lookup by service the events we need to listen to.
+                if (!(serviceUri in SERVICE_TO_SUBSCRIPTION_EVENTS_MAP)) {
+                    throw new Error('Unknown service: ' + serviceUri);
+                }
+                var events: string[] = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri];
+                events.forEach((event: string): void => {
+                    log('listening on event: ' + event + ' for cid: ' + cid);
+                    this.listen(event, cid, (m: any): void => {
+                        s.emit('data', m.data, s);
+                    });
                 });
 
                 var result: blpapi.Subscription = {

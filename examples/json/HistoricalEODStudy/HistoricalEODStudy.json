@@ -1,0 +1,19 @@
+{
+    "priceSource": {
+        "securityName": "IBM US Equity",
+        "dataRange": {
+            "historical": {
+                "startDate": "20100501",
+                "endDate": "20100528"
+            }
+        }
+    },
+    "studyAttributes": {
+        "dmiStudyAttributes": {
+            "period": 15,
+            "priceSourceLow": "PX_LOW",
+            "priceSourceClose": "PX_LAST",
+            "priceSourceHigh": "PX_HIGH"
+        }
+    }
+}
