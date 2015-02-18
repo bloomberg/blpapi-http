@@ -178,7 +178,7 @@ request must specify at least one security and at least one field.
 Example request/response:
 
 ```
-curl -X POST 'http://blpapihost.example.com/request?ns=blp&service=refdata&type=ReferenceData' --data @- <<EOF
+curl -X POST 'http://blpapihost.example.com/request?ns=blp&service=refdata&type=ReferenceDataRequest' --data @- <<EOF
 { "securities": ["IBM US Equity", "AAPL US Equity"],
   "fields": ["PX_LAST", "NAME", "EPS_ANNUALIZED"] }
 EOF
@@ -231,7 +231,7 @@ specify `"returnFieldDocumentation": "true"`.
 Example request/response:
 
 ```
-curl -X POST 'http://blpapihost.example.com/request&ns=blp&service=apiflds&type=FieldInfo' --data @- <<EOF
+curl -X POST 'http://blpapihost.example.com/request&ns=blp&service=apiflds&type=FieldInfoRequest' --data @- <<EOF
 { "id": ["NAME"],
   "returnFieldDocumentation": "true" }
 EOF
