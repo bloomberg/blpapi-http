@@ -31,23 +31,22 @@ specific sections of the [Developer's Guide].
 Requesting data
 ---------------
 
-To request data, a client makes a HTTP POST request to a URL of the following
-form:
+Clients access services that use the Request/Response paradigm via `/request`:
 
 ```
-http://blpapihost.example.com/request/blp/refdata/<operation>
+http://blpapihost.example.com/request?ns=<namespace>&service=<service>&type=<requestType>
 ```
 
-Let's examine each segment of the path:
+`/request` requires three query parameters:
 
-* `/request` -- The Open API paradigm we're using, namely Request/Response.
-* `/blp/refdata` -- The service on which we're making the request. Currently
-`/blp/refdata` and `/blp/apiflds` are supported; more will be added in future
+* `ns` -- The namespace for the service on which we're making the request.
+Currently all services are in the `blp` namespace.
+* `service` -- The service on which we're making the request. Currently
+`refdata` and `apiflds` are supported; more will be added in future
 versions.
-* `<operation>` -- The operation for this request. For `/blp/refdata`,
+* `type` -- The request type for this operation. For `//blp/refdata`,
 the operations are listed in section A.2.1 (and detailed in section 7.2) of the
-[Developer's Guide]. Note that the URL omits the "Request" in the operation
-name, e.g. for the HistoricalDataRequest operation, use `/HistoricalData`
+[Developer's Guide].
 
 The body of the POST should consist of a JSON object containing the parameters
 for the request. Each operation defines what parameters it uses; sections 7.2
@@ -57,7 +56,7 @@ As an example, the following will request the open and last price for IBM and
 Apple stock for each day during the period Jan 1 - 5, 2012.
 
 ```
-curl -X POST http://blpapihost.example.com/request/blp/refdata/HistoricalData --data @- <<EOF
+curl -X POST 'http://blpapihost.example.com/request?ns=blp&service=refdata&type=HistoricalDataRequest' --data @- <<EOF
 { "securities": ["IBM US Equity", "AAPL US Equity"],
   "fields": ["PX_LAST", "OPEN"],
   "startDate": "20120101",
@@ -179,7 +178,7 @@ request must specify at least one security and at least one field.
 Example request/response:
 
 ```
-curl -X POST http://blpapihost.example.com/request/blp/refdata/ReferenceData --data @- <<EOF
+curl -X POST 'http://blpapihost.example.com/request?ns=blp&service=refdata&type=ReferenceData' --data @- <<EOF
 { "securities": ["IBM US Equity", "AAPL US Equity"],
   "fields": ["PX_LAST", "NAME", "EPS_ANNUALIZED"] }
 EOF
@@ -232,7 +231,7 @@ specify `"returnFieldDocumentation": "true"`.
 Example request/response:
 
 ```
-curl -X POST http://blpapihost.example.com/request/blp/apiflds/FieldInfo --data @- <<EOF
+curl -X POST 'http://blpapihost.example.com/request&ns=blp&service=apiflds&type=FieldInfo' --data @- <<EOF
 { "id": ["NAME"],
   "returnFieldDocumentation": "true" }
 EOF

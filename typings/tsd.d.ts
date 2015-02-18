@@ -12,3 +12,6 @@
 /// <reference path="node-uuid/node-uuid.d.ts" />
 /// <reference path="mocha/mocha.d.ts" />
 /// <reference path="should/should.d.ts" />
+/// <reference path="express-validator/express-validator.d.ts" />
+/// <reference path="express/express.d.ts" />
+/// <reference path="express-validator/restify-validator.d.ts" />

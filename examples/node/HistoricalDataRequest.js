@@ -8,7 +8,7 @@ var port = 443
 var options = {
     host: host,
     port: port,
-    path: '/request/blp/refdata/HistoricalData',
+    path: '/request?ns=blp&service=refdata&type=HistoricalData',
     method: 'POST',
     key: fs.readFileSync('client.key'),
     cert: fs.readFileSync('client.crt'),
