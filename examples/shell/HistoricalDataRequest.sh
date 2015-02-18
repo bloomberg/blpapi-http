@@ -9,7 +9,7 @@ fi
 
 REQUEST="$1"
 
-curl -v -X POST "https://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=HistoricalData"  \
+curl -v -X POST "https://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=HistoricalDataRequest"  \
     --cacert bloomberg.crt \
     --cert   client.crt    \
     --key    client.key    \

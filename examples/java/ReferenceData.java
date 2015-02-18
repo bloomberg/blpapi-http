@@ -16,7 +16,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class ReferenceData {
     public static final String apiUrl = "https://http-api.openbloomberg.com"
-        + "/request?ns=blp&service=refdata&type=ReferenceData";
+        + "/request?ns=blp&service=refdata&type=ReferenceDataRequest";
     public static final String keyStorePW = "secure";
     public static final String trustStorePW = "secure2";
     public static final String clientCert = "client.p12";

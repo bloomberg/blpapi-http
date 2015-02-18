@@ -17,7 +17,7 @@ data = {
 }
 
 def request(args):
-    req = urllib.request.Request('https://{}/request?ns=blp&service=refdata&type=HistoricalData'.format(args.host))
+    req = urllib.request.Request('https://{}/request?ns=blp&service=refdata&type=HistoricalDataRequest'.format(args.host))
     req.add_header('Content-Type', 'application/json')
 
     ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -28,7 +28,7 @@ def request(args):
     opener = urllib.request.build_opener(https_sslv23_handler)
     urllib.request.install_opener(opener)
 
-    try: 
+    try:
         res = opener.open(req, data=json.dumps(data).encode("ascii"))
         print(res.read())
     except Exception as e:

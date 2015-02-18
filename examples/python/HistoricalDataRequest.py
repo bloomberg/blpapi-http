@@ -17,14 +17,14 @@ data = {
 }
 
 def request(args):
-    req = urllib2.Request('https://{}/request?ns=blp&service=refdata&type=HistoricalData'.format(args.host))
+    req = urllib2.Request('https://{}/request?ns=blp&service=refdata&type=HistoricalDataRequest'.format(args.host))
     req.add_header('Content-Type', 'application/json')
 
     ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
     ctx.load_verify_locations('bloomberg.crt')
     ctx.load_cert_chain('client.crt', 'client.key')
 
-    try: 
+    try:
         res = urllib2.urlopen(req, data=json.dumps(data), context=ctx)
         print res.read()
     except Exception as e:
