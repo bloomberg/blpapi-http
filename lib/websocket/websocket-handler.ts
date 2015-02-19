@@ -121,9 +121,23 @@ function setup(socket: Interface.ISocket): void
 
                 // Emit the data
                 // TODO: Acknowledgement callback function?
-                socket.send('data', {'correlationId': sub.correlationId,
-                                     'data': data});
+                socket.send('data', {
+                    'correlationId': sub.correlationId,
+                    'data': data
+                });
                 socket.log.info('Data sent');
+            });
+
+            // Must subscribe to the 'error' event; otherwise EventEmitter will throw an exception
+            // that was occurring from the underlying blpapi.Session.  It is the assumed that the
+            // blpapi.Session properly cleans up the subscription (i.e., 'unsubscribe()' should not
+            // be called).
+            sub.on('error', (err: Error): void => {
+                socket.log.error(err, 'blpapi.Session subscription error occurred.');
+                socket.send('error', { message: err.message });
+                sub.removeAllListeners();
+                activeSubscriptions.delete(sub.correlationId);
+                receivedSubscriptions.delete(sub.correlationId);
             });
         });
 

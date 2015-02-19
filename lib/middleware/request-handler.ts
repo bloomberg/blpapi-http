@@ -265,6 +265,17 @@ export function onSubscribe(req: Interface.IOurRequest,
                 // Buffer the current data
                 sub.buffer.pushValue(data);
             });
+
+            // Must subscribe to the 'error' event; otherwise EventEmitter will throw an exception
+            // that was occurring from the underlying blpapi.Session.  It is the assumed that the
+            // blpapi.Session properly cleans up the subscription (i.e., 'unsubscribe()' should not
+            // be called).
+            sub.on('error', (err: Error): void => {
+                req.log.error(err, 'blpapi.Session subscription error occurred.');
+                sub.removeAllListeners();
+                req.apiSession.activeSubscriptions.delete(sub.correlationId);
+                req.apiSession.receivedSubscriptions.delete(sub.correlationId);
+            });
         });
 
         // Subscribe user request through blpapi-wrapper
