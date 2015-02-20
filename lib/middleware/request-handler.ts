@@ -119,66 +119,48 @@ export function elevateRequest (req: Interface.IOurRequest,
                                 next: restify.Next): void
 {
     var chunkIndex: number = 0;
-    var chunk: string; // the current chunk string is assembled here
-    var needComma: boolean = false; // need to append a ',' before adding more data
 
-    // returns a promise
-    function prepareResponse (): Promise<any> {
-        var resultP: Promise<any> = undefined;
-        if (++chunkIndex === 1) {
+    /**
+     * This is called each time data is added to the response.
+     * @param isEnd Whether this is the last time this will be called for this http request.
+     * @returns {string} Text that should be added to the response before the caller adds its data.
+     */
+    function prepareResponseText(isEnd: boolean): string {
+        var text: string;
+        if (1 === ++chunkIndex) {
+            // This is the first time we're adding response text. Set the headers as well.
+            res.statusCode = 200;
             res.setHeader('content-type', 'application/json');
-            chunk = '{';
-            needComma = false;
+            // If isEnd is true, then we aren't actually adding a data array to the http response.
+            text = isEnd ? '{' : '{"data":[';
         } else {
-            chunk = '';
+            // If isEnd is true, we must have previously added data to the response, so we need to
+            // close the data array.
+            text = isEnd ? '],' : ',';
         }
-
-        return resultP || Promise.resolve(undefined);
-    };
+        assert(text, 'Response text was not set');
+        return text;
+    }
 
     function stringifyPair ( key: string, value: any ): string {
         return '"' + key.replace(/'/g, '\\$&') + '":' + JSON.stringify(value);
     }
 
     res.sendChunk = (data: any): Promise<void> => {
-        var p = prepareResponse();
-        return p.then((): void => {
-            if (chunkIndex === 1) {
-                res.statusCode = 200;
-                if (needComma) {
-                    chunk += ',';
-                }
-                chunk += '"data":[';
-                needComma = false;
-            }
-            if (needComma) {
-                chunk += ',';
-            }
-            res.write( chunk + JSON.stringify(data) );
-            needComma = true;
-        });
+        var text = prepareResponseText(false);
+        res.write(text + JSON.stringify(data));
+        // TODO: Remove this return value when subscription code is simplified. See issue #87.
+        return Promise.resolve();
     };
 
     res.sendEnd = (status: string, message: string): Promise<void> => {
-        var p = prepareResponse();
-        return p.then((): void => {
-            // If this is the only chunk, we can set the http status
-            if (chunkIndex === 1) {
-                res.statusCode = 200;
-            } else {
-                chunk += ']';
-                needComma = true;
-            }
-            if (needComma) {
-                chunk += ',';
-            }
-            chunk += stringifyPair( 'status', status ) + ',' +
-                     stringifyPair( 'message', message || '' ) +
-                     '}';
-            res.end( chunk );
-            needComma = false;
-            chunk = '';
-        });
+        var text = util.format('%s%s,%s}',
+                               prepareResponseText(true),
+                               stringifyPair('status', status),
+                               stringifyPair('message', message || ''));
+        res.end(text);
+        // TODO: Remove this return value when subscription code is simplified. See issue #87.
+        return Promise.resolve();
     };
 
     return next();
@@ -190,31 +172,20 @@ export function onRequest(req: Interface.IOurRequest,
 {
     assert(req.blpSession, 'blpSession not found');
 
-    ((): Promise<any> => {
-        return (new Promise<any>((resolve: () => void,
-                                  reject: (error: any) => void): void => {
-            req.blpSession.request(util.format('//%s/%s', req.query.ns, req.query.service),
-                req.query.type,
-                req.body,
-                (err: Error, data: any, last: boolean): void => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    var p = res.sendChunk( data );
-                    if (last) {
-                        p.then((): Promise<any> => {
-                            return res.sendEnd( 0, 'OK' );
-                        }).then(resolve);
-                    }
-                });
-        }));
-    })()
-        .then(next)
-        .catch( (err: Error): any => {
-            req.log.error(err, 'Request error.');
-            return next(new restify.InternalError(err.message));
-        });
+    req.blpSession.request(util.format('//%s/%s', req.query.ns, req.query.service),
+                           req.query.type,
+                           req.body,
+                           (err: Error, data: any, last: boolean): void => {
+                               if (err) {
+                                   req.log.error(err, 'Request error.');
+                                   return next(new restify.InternalError(err.message));
+                               }
+                               res.sendChunk(data);
+                               if (last) {
+                                   res.sendEnd(0, 'OK');
+                                   return next();
+                               }
+                           });
 }
 
 export function onSubscribe(req: Interface.IOurRequest,
