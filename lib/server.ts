@@ -8,6 +8,7 @@ import sio = require('socket.io');
 import webSocket = require('ws');
 import conf = require('./config');
 import Interface = require('./interface');
+import auth = require('./middleware/auth');
 import blpSession = require('./middleware/blp-session');
 import requestHandler = require('./middleware/request-handler');
 import util = require('./middleware/util');
@@ -50,6 +51,7 @@ export function startServer(): Promise<restify.Server[]>
     server.use(util.getCert);
     server.use(util.log);
     server.use(blpSession.getSession);
+    server.use(auth.getIdentity);
     server.use(requestHandler.elevateRequest);
 
     // Routing
@@ -66,7 +68,7 @@ export function startServer(): Promise<restify.Server[]>
     // These are done via POST and GET respectively.
     server.post('/subscription',
                 util.rejectHTTP,
-                requestValidator.requireChoiceQueryParam('action', ['start', 'stop']),
+                requestValidator.requireActionQueryParam(requestHandler.getSubscriptionActions()),
                 apiSession.handleSession,
                 requestHandler.onChangeSubscriptions);
     server.get('/subscription',
@@ -74,6 +76,12 @@ export function startServer(): Promise<restify.Server[]>
                requestValidator.requireIntQueryParams(['pollid']),
                apiSession.handleSession,
                requestHandler.onPollSubscriptions);
+
+    // `/auth` handles authorization related requests (and in the future, authentication).
+    server.post('/auth',
+                util.rejectHTTP,
+                requestValidator.requireActionQueryParam(requestHandler.getAuthActions()),
+                requestHandler.onAuth);
 
     // Listen
     server.listen(conf.get('port'));

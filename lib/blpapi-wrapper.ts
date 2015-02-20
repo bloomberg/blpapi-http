@@ -50,7 +50,7 @@ export class Subscription extends events.EventEmitter {
 
 export class BlpApiError implements Error {
     // STATIC DATA
-    static NAME: string = 'BlpApiErorr';
+    static NAME: string = 'BlpApiError';
 
     // DATA
     data: any;
@@ -59,7 +59,8 @@ export class BlpApiError implements Error {
     constructor(data: any) {
         this.data = data;
         this.name = BlpApiError.NAME;
-        this.message = data.reason.description;
+        // Subscription errors have a description, other errors have a message.
+        this.message = data.reason.message || data.reason.description;
     }
 }
 
@@ -92,7 +93,11 @@ var REQUEST_TO_RESPONSE_MAP: { [index: string]: string; } = {
     'govtListRequest':       'GovtListResponse',
 
     // //blp/tasvc
-    'studyRequest':          'studyResponse'
+    'studyRequest':          'studyResponse',
+
+    // //blp/apiauth
+    'AuthorizationRequest':      'AuthorizationResponse',
+    'AuthorizationTokenRequest': 'AuthorizationTokenResponse'
 };
 
 // Mapping of service URIs to the event names to listen to when subscribed to these services.
@@ -254,6 +259,37 @@ export class Session extends events.EventEmitter {
         log('Session terminated');
     }
 
+    private doRequest(uri: string,
+                      requestName: string,
+                      request: any,
+                      callback: IRequestCallback,
+                      isAuthRequest: boolean,
+                      identity?: blpapi.Identity): void
+    {
+        this.validateSession();
+
+        var correlatorId = this.nextCorrelatorId();
+        this.requests[correlatorId] = callback;
+
+        this.openService(uri).then((): void => {
+            log(util.format('Request: %s|%d', requestName, correlatorId));
+            trace(request);
+            if (isAuthRequest) {
+                this.session.authorizeUser(request, correlatorId);
+            } else {
+                this.session.request(uri, requestName, request, correlatorId, identity);
+            }
+            assert(requestName in REQUEST_TO_RESPONSE_MAP,
+                   util.format('Request, %s, not handled', requestName));
+            this.listen(REQUEST_TO_RESPONSE_MAP[requestName],
+                        correlatorId,
+                        this.requestHandler.bind(this, callback));
+        }).catch((ex: Error): void => {
+            delete this.requests[correlatorId];
+            callback(ex);
+        });
+    }
+
     // PRIVATE ACCESSORS
     private validateSession(): void {
         if (this.stopped) {
@@ -311,28 +347,47 @@ export class Session extends events.EventEmitter {
         }).nodeify(cb);
     }
 
-    request(uri: string, requestName: string, request: any, callback: IRequestCallback): void {
-        this.validateSession();
-
-        var correlatorId = this.nextCorrelatorId();
-        this.requests[correlatorId] = callback;
-
-        this.openService(uri).then((): void => {
-            log(util.format('Request: %s|%d', requestName, correlatorId));
-            trace(request);
-            this.session.request(uri, requestName, request, correlatorId);
-            assert(requestName in REQUEST_TO_RESPONSE_MAP,
-                   util.format('Request, %s, not handled', requestName));
-            this.listen(REQUEST_TO_RESPONSE_MAP[requestName],
-                        correlatorId,
-                        this.requestHandler.bind(this, callback));
-        }).catch((ex: Error): void => {
-            delete this.requests[correlatorId];
-            callback(ex);
-        });
+    request(uri: string,
+            requestName: string,
+            request: any,
+            identity: blpapi.Identity,
+            callback: IRequestCallback): void
+    {
+        var isAuthRequest = false;
+        this.doRequest(uri, requestName, request, callback, isAuthRequest, identity);
     }
 
-    subscribe(subscriptions: Subscription[], cb?: (err: any) => void): Promise<void> {
+    authorizeUser(request: any, cb?: (err: any, value: any) => void): Promise<blpapi.Identity> {
+        return new Promise<blpapi.Identity>((resolve: (identity: blpapi.Identity) => void,
+                                             reject: (err: Error) => void): void => {
+            var identity: blpapi.Identity = null;
+            function callback(err: Error, data?: any, isFinal?: boolean): void {
+                if (err) {
+                    reject(err);
+                } else {
+                    if (data.hasOwnProperty('identity')) {
+                        identity = data.identity;
+                    }
+                    if (isFinal) {
+                        if (identity) {
+                            resolve(identity);
+                        } else {
+                            reject(new BlpApiError(data));
+                        }
+                    }
+                }
+            }
+            var uri = '//blp/apiauth';
+            var requestName = 'AuthorizationRequest';
+            var isAuthRequest = true;
+            this.doRequest(uri, requestName, request, callback, isAuthRequest);
+        }).nodeify(cb);
+    }
+
+    subscribe(subscriptions: Subscription[],
+              identity: blpapi.Identity,
+              cb?: (err: any) => void): Promise<void>
+    {
         this.validateSession();
 
         var subscriptionsAndServices = _.forEach(subscriptions, (s: Subscription,
@@ -361,14 +416,12 @@ export class Session extends events.EventEmitter {
         })).then((): void => {
             log('Subscribing to: ' + JSON.stringify(subscriptions));
 
-            this.session.subscribe(_.map(subscriptionsAndServices,
-                                         (sas: SubscriptionAndService): blpapi.Subscription =>
-            {
+            function makeSubscription(sas: SubscriptionAndService): blpapi.Subscription {
                 var cid = this.nextCorrelatorId();
                 var s = sas.subscription;
                 var serviceUri = sas.serviceUri;
-                // XXX: yes, this is a side-effect of map, but it is needed for performance reasons
-                //      until ES6 Map is available
+                // XXX: yes, this is a side-effect of map, but it is needed for performance
+                //      reasons until ES6 Map is available
                 this.subscriptions[cid] = s;
 
                 assert(serviceUri in SERVICE_TO_SUBSCRIPTION_EVENTS_MAP,
@@ -391,7 +444,10 @@ export class Session extends events.EventEmitter {
                     result.options = s.options;
                 }
                 return result;
-            }));
+            }
+
+            var subs = _.map(subscriptionsAndServices, makeSubscription);
+            this.session.subscribe(subs, identity);
         }).nodeify(cb);
     }
 
