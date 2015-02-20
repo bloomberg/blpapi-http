@@ -1,23 +1,25 @@
 /// <reference path='../../typings/tsd.d.ts' />
 
-import events = require('events');
 import _ = require('lodash');
 import bunyan = require('bunyan');
 import webSocket = require('ws');
-import BAPI = require('../blpapi-wrapper');
-import Interface = require('../interface');
+import SocketBaseImpl = require('./socket-base-impl');
 
 export = WSWrapper;
 
-class WSWrapper extends events.EventEmitter implements Interface.ISocket {
+class WSWrapper extends SocketBaseImpl {
+    // DATA
     private socket: webSocket;
-    private _log: bunyan.Logger;
-    public blpSession: BAPI.Session;
 
+    // PROTECTED MANIPULATORS
+    protected send(name: string, ...args: any[]): void {
+        this.socket.send(JSON.stringify({type: name, data: args}));
+    }
+
+    // CREATORS
     constructor(s: webSocket, l: bunyan.Logger) {
-        super();
+        super(l);
         this.socket = s;
-        this._log = l;
 
         this.socket.on('message', (message: string): void => {
             var obj: any;
@@ -45,10 +47,12 @@ class WSWrapper extends events.EventEmitter implements Interface.ISocket {
         });
     }
 
-    get log(): bunyan.Logger {
-        return this._log;
+    // MANIPULATORS
+    disconnect(): void {
+        this.socket.close();
     }
 
+    // ACCESSORS
     isConnected(): boolean {
         return this.socket.readyState === webSocket.OPEN;
     }
@@ -60,13 +64,5 @@ class WSWrapper extends events.EventEmitter implements Interface.ISocket {
 
     getCert(): any {
         return (<any>this.socket).upgradeReq.connection.getPeerCertificate();
-    }
-
-    disconnect(): void {
-        this.socket.close();
-    }
-
-    send(name: string, ...args: any[]): void {
-        this.socket.send(JSON.stringify({type: name, data: args}));
     }
 }
