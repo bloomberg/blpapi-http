@@ -15,7 +15,7 @@ export = Session;
 
 class Session {
     // PRIVATE VARIABLES
-    private _blpsess: BAPI.Session;
+    private _blpsess: BAPI.ISession;
     private _logger: bunyan.Logger;
     private _seconds: number; // Last checked activity timestamp
     private _expired: boolean = false;
@@ -39,7 +39,7 @@ class Session {
     }
 
     // CONSTRUCTOR
-    constructor(blpsess: BAPI.Session) {
+    constructor(blpsess: BAPI.ISession) {
         this._blpsess = blpsess;
         this._logger = bunyan.createLogger(conf.get('loggerOptions'));
         this._seconds = curSeconds();  // Record the creation time

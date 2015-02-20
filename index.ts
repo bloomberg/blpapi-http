@@ -70,6 +70,10 @@ server.on('error', (err: Error): void => {
 });
 server.on('listening', (): void => {
     logger.info('http server listening on', conf.get('port') );
+    process.send({  // signal parent process that HTTP server is ready(for testing)
+        sType: 'HTTP',
+        message: 'server startup'
+    });
 });
 server.on('after', util.after);
 
@@ -79,6 +83,10 @@ if (conf.get('websocket.socket-io.enable')) {
     serverSio.listen(conf.get('websocket.socket-io.port'));
     serverSio.on('listening', (): void => {
         logger.info('socket.io server listening on', conf.get('websocket.socket-io.port') );
+        process.send({  // signal parent process that SocketIO server is ready(for testing)
+            sType: 'SOCKETIO',
+            message: 'server startup'
+        });
     });
     var io: SocketIO.Namespace = sio(serverSio.server).of('/subscription');
     io.on('connection', webSocketHandler.sioOnConnect);
@@ -90,6 +98,10 @@ if (conf.get('websocket.ws.enable')) {
     serverWS.listen(conf.get('websocket.ws.port'));
     serverWS.on('listening', (): void => {
         logger.info('ws server listening on', conf.get('websocket.ws.port') );
+        process.send({  // signal parent process that WS server is ready(for testing)
+            sType: 'WS',
+            message: 'server startup'
+        });
     });
     var wss = new webSocket.Server({ server: serverWS.server });
     wss.on('connection', webSocketHandler.wsOnConnect);

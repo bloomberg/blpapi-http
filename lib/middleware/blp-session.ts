@@ -12,11 +12,11 @@ var DEFAULT_ID = '__default__';
 var DEFAULT_SESSION_OPTIONS = conf.get('sessionOptions');
 
 // GLOBALS
-var SESSION_STORE: {[index: string]: Promise<blpapi.Session>} = {};
+var SESSION_STORE: {[index: string]: Promise<blpapi.ISession>} = {};
 var LOGGER: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 
 // FUNCTIONS
-function createSession(sessionId: string): Promise<blpapi.Session>
+function createSession(sessionId: string): Promise<blpapi.ISession>
 {
     if (!(sessionId in SESSION_STORE)) {
         var s = new blpapi.Session(DEFAULT_SESSION_OPTIONS);
@@ -46,7 +46,7 @@ export function getSession(req: interfaces.IOurRequest,
                            next: restify.Next): void
 {
     createSession(DEFAULT_ID)
-        .then((session: blpapi.Session): void => {
+        .then((session: blpapi.ISession): void => {
             req.log.debug('blpSession retrieved.');
             req.blpSession = session;
             return next();
@@ -59,7 +59,7 @@ export function getSession(req: interfaces.IOurRequest,
 export function getSocketSession(socket: interfaces.ISocket): Promise<interfaces.ISocket>
 {
     return createSession(DEFAULT_ID)
-        .then((session: blpapi.Session): interfaces.ISocket => {
+        .then((session: blpapi.ISession): interfaces.ISocket => {
             socket.log.debug('blpSession retrieved.');
             socket.blpSession = session;
             return socket;

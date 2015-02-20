@@ -19,10 +19,12 @@
   },
   "devDependencies": {
     "mocha": "^2.1.0",
+    "mockery": "^1.4.0",
+    "request": "^2.53.0",
+    "should": "^4.6.5",
     "tsd": "^0.5.7",
     "tslint": "^2.1.1",
-    "typescript": "^1.4.1",
-    "should": "^4.6.5"
+    "typescript": "^1.4.1"
   },
   "scripts": {
     "test": "make check"

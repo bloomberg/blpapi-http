@@ -128,7 +128,15 @@ function getUniqueServices(sass: SubscriptionAndService[]): string[] {
     }).uniq().valueOf();
 }
 
-export class Session extends events.EventEmitter {
+export interface ISession extends NodeJS.EventEmitter {
+    start(cb?: (err: any, value: any) => void): Promise<void>;
+    stop(cb?: (err: any, value: any) => void): Promise<void>;
+    request(uri: string, name: string, request: any, callback: IRequestCallback): void;
+    subscribe(subscriptions: Subscription[], cb?: (err: any) => void): Promise<void>;
+    unsubscribe(subscriptions: Subscription[]): void;
+}
+
+export class Session extends events.EventEmitter implements ISession {
     //ATTRIBUTES
     // TypeScript compiler needs this to allow "this['property-string']" type of access
     [index: string]: any;
