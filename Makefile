@@ -31,11 +31,14 @@ MOCHA := $(MOCHA_BIN) $(MOCHA_COMMON)
 RM ?= rm -f
 TOUCH ?= touch
 
-.PHONY: all build check tslint test test-mocha clean
+.PHONY: all build check dependecies tslint test test-mocha clean
 
-all: build tslint
+all: dependencies build tslint
 
-check: tslint build test
+check: all test
+
+dependencies:
+	@npm install
 
 lint: tslint
 
