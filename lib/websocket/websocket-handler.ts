@@ -38,7 +38,7 @@ function onConnect(socket: Interface.ISocket): void
         .catch((err: Error): any => {
             socket.log.error(err);
             if (socket.isConnected()) {
-                socket.send('err', { message: 'Unexpected error: ' + err.message });
+                socket.sendError('Unexpected error: ' + err.message);
                 socket.disconnect();
             }
         });
@@ -64,8 +64,9 @@ function setup(socket: Interface.ISocket): void
     // Clean up sockets for cases where the underlying session terminated unexpectedly
     socket.blpSession.once('SessionTerminated', (): void => {
         if (socket.isConnected()) {
-            socket.log.debug('blpSession terminated unexpectedly. Terminate socket.');
-            socket.send('err', { message: 'blpSession terminated unexpectedly.' });
+            var message = 'blpSession terminated unexpectedly.';
+            socket.log.debug(message);
+            socket.sendError(message);
             socket.disconnect();
         }
     });
@@ -81,8 +82,9 @@ function setup(socket: Interface.ISocket): void
         // Validate input options
         var subscriptions: Subscription[] = [];
         if (!data.length) {
-            socket.log.debug('No valid subscriptions found.');
-            socket.send('err', { message: 'No valid subscriptions found.' });
+            var message = 'No valid subscriptions found.';
+            socket.log.debug(message);
+            socket.sendError(message);
             return;
         }
         data.forEach((s: {'correlationId': number;
@@ -97,13 +99,17 @@ function setup(socket: Interface.ISocket): void
                 !_.isString(s.security) ||
                 !_.has(s, 'fields') ||
                 !_.isArray(s.fields)) {
-                socket.log.debug('Invalid subscription option.');
-                socket.send('err', { message: 'Invalid subscription option.' });
+
+                var message = 'Invalid subscription option.';
+                socket.log.debug(message);
+                socket.sendError(message);
                 return;
             }
+
             if (receivedSubscriptions.has(s.correlationId)) {
-                socket.log.debug('Correlation Id already exists.');
-                socket.send('err', { message: 'Correlation Id already exists.' });
+                message = 'Correlation id ' + s.correlationId + ' already exists.';
+                socket.log.debug(message);
+                socket.sendError(message);
                 return;
             }
 
@@ -121,10 +127,7 @@ function setup(socket: Interface.ISocket): void
 
                 // Emit the data
                 // TODO: Acknowledgement callback function?
-                socket.send('data', {
-                    'correlationId': sub.correlationId,
-                    'data': data
-                });
+                socket.sendData(sub.correlationId, data);
                 socket.log.info('Data sent');
             });
 
@@ -134,7 +137,7 @@ function setup(socket: Interface.ISocket): void
             // be called).
             sub.on('error', (err: Error): void => {
                 socket.log.error(err, 'blpapi.Session subscription error occurred.');
-                socket.send('error', { message: err.message });
+                socket.sendError(err.message);
                 sub.removeAllListeners();
                 activeSubscriptions.delete(sub.correlationId);
                 receivedSubscriptions.delete(sub.correlationId);
@@ -149,7 +152,7 @@ function setup(socket: Interface.ISocket): void
                         activeSubscriptions.set(s.correlationId, s);
                     });
                     socket.log.debug('Subscribed');
-                    socket.send('subscribed');
+                    socket.notifySubscribed();
                 } else { // Unsubscribe if socket already closed
                     try {
                         socket.blpSession.unsubscribe(subscriptions);
@@ -169,7 +172,7 @@ function setup(socket: Interface.ISocket): void
                     receivedSubscriptions.delete(s.correlationId);
                 });
                 if (socket.isConnected()) {
-                    socket.send('err', err);
+                    socket.sendError(err.message);
                 }
             });
     });
@@ -183,8 +186,9 @@ function setup(socket: Interface.ISocket): void
         }
 
         if (!activeSubscriptions.size) {
-            socket.log.debug('No active subscriptions.');
-            socket.send('err', { message: 'No active subscriptions.' });
+            var message = 'No active subscriptions';
+            socket.log.debug(message);
+            socket.sendError(message);
             return;
         }
 
@@ -199,8 +203,9 @@ function setup(socket: Interface.ISocket): void
             if (!_.has(data, 'correlationIds') ||
                 !_.isArray(data.correlationIds) ||
                 !data.correlationIds.length) {
-                socket.log.debug('Invalid unsubscribe data received.');
-                socket.send('err', { message: 'Invalid unsubscribe data received.' });
+                message = 'Invalid unsubscribe data received.';
+                socket.log.debug(message);
+                socket.sendError(message);
                 return;
             }
             // Next, validate all correlation Ids
@@ -211,8 +216,9 @@ function setup(socket: Interface.ISocket): void
                     subscriptions.push(activeSubscriptions.get(cid));
                 } else {
                     isAllValid = false;
-                    socket.log.debug('Invalid correlation Id ' + cid + ' received.');
-                    socket.send('err', { message: 'Invalid correlation Id ' + cid + ' received.' });
+                    var message = 'Invalid correlation Id ' + cid + ' received.';
+                    socket.log.debug(message);
+                    socket.sendError(message);
                     return false;
                 }
             });
@@ -224,8 +230,9 @@ function setup(socket: Interface.ISocket): void
         try {
             socket.blpSession.unsubscribe(subscriptions);
         } catch (ex) {
-            socket.log.error(ex, 'Error Unsubscribing');
-            socket.send('err', { message: 'error unsubscribing:' + ex});
+            message = 'Error unsubscribing';
+            socket.log.error(message);
+            socket.sendError(message);
             return;
         }
         subscriptions.forEach((s: Subscription): void => {
@@ -233,9 +240,7 @@ function setup(socket: Interface.ISocket): void
             activeSubscriptions.delete(s.correlationId);
             receivedSubscriptions.delete(s.correlationId);
         });
-        receivedSubscriptions.size
-            ? socket.send('unsubscribed')
-            : socket.send('unsubscribed all');
+        socket.notifyUnsubscribed(0 === receivedSubscriptions.size);
         socket.log.debug({activeSubscriptions: activeSubscriptions.size}, 'Unsubscribed.');
     });
 
@@ -260,5 +265,5 @@ function setup(socket: Interface.ISocket): void
     });
 
     // Complete server setup
-    socket.send('connected');
+    socket.notifyConnected();
 }

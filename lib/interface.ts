@@ -22,11 +22,20 @@ export interface IOurResponse extends restify.Response {
 }
 
 export interface ISocket extends NodeJS.EventEmitter {
+    // PROPERTIES
     log: bunyan.Logger; // Add bunyan logger to socket
     blpSession: BAPI.Session;  // Add blpSession to socket
+
+    // MANIPULATORS
+    sendData(correlationId: number, data: any): void;
+    sendError(message: string): void;
+    notifyConnected(): void;
+    notifySubscribed(): void;
+    notifyUnsubscribed(all: boolean): void;
+    disconnect(): void;
+
+    // ACCESSORS
     isConnected(): boolean;
     getIP(): string;
     getCert(): any;
-    disconnect(): void;
-    send(name: string, ...args: any[]): void;
 }

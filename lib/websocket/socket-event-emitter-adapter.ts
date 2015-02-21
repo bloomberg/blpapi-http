@@ -6,15 +6,15 @@ import events = require('events');
 // TYPEDEF
 var EVENTEMITTERPROTOTYPE = events.EventEmitter.prototype;
 
-export = SocketEventEmitterAdapter;
+export type EventEmitter = SocketIO.Socket | NodeJS.EventEmitter;
 
-class SocketEventEmitterAdapter implements events.EventEmitter {
+export class SocketEventEmitterAdapter implements events.EventEmitter {
     // DATA
-    private emitter: SocketIO.Socket;
+    private emitter: EventEmitter;
 
     // CREATORS
-    constructor(socket: SocketIO.Socket) {
-        this.emitter = socket;
+    constructor(emitter: EventEmitter) {
+        this.emitter = emitter;
     }
 
     // NodeJS.EventEmitter implement
@@ -52,9 +52,13 @@ class SocketEventEmitterAdapter implements events.EventEmitter {
     }
 
     emit(event: string, ...args: any[]): boolean {
-        // Note that we want to stub calls to 'emit' because SocketIO.Socket.emit is specialized
-        // and does not follow the the standard NodeJS.EventEmitter interface.
-        assert(false, '“emit” should not be called on SocketEventEmitterAdapter');
-        return false;
+        if (this.emitter instanceof events.EventEmitter) {
+            return EVENTEMITTERPROTOTYPE.emit.apply(this.emitter, arguments);
+        } else {
+            // Note that we want to stub calls to 'emit' because SocketIO.Socket.emit is specialized
+            // and does not follow the the standard NodeJS.EventEmitter interface.
+            assert(false, '“emit” should not be called on SocketEventEmitterAdapter');
+            return false;
+        }
     }
 }

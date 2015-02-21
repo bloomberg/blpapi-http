@@ -2,27 +2,31 @@
 
 import bunyan = require('bunyan');
 import SocketIO = require('socket.io');
-import BAPI = require('../blpapi-wrapper');
-import Interface = require('../interface');
-import SocketEventEmitterAdapter = require('./socket-event-emitter-adapter');
+import SocketBaseImpl = require('./socket-base-impl');
 
 export = SocketIOWrapper;
 
-class SocketIOWrapper extends SocketEventEmitterAdapter implements Interface.ISocket {
+class SocketIOWrapper extends SocketBaseImpl {
+    // DATA
     private socket: SocketIO.Socket;
-    private _log: bunyan.Logger;
-    public blpSession: BAPI.Session;
 
+    // PROTECTED MANIPULATORS
+    protected send(name: string, ...args: any[]): void {
+        this.socket.emit(name, args);
+    }
+
+    // CREATORS
     constructor(s: SocketIO.Socket, l: bunyan.Logger) {
-        super(s);
+        super(l, s);
         this.socket = s;
-        this._log = l;
     }
 
-    get log(): bunyan.Logger {
-        return this._log;
+    // MANIPULATORS
+    disconnect(): void {
+        this.socket.disconnect(true);
     }
 
+    // ACCESSORS
     isConnected(): boolean {
         return this.socket.connected;
     }
@@ -35,13 +39,4 @@ class SocketIOWrapper extends SocketEventEmitterAdapter implements Interface.ISo
     getCert(): any {
         return this.socket.request.connection.getPeerCertificate();
     }
-
-    disconnect(): void {
-        this.socket.disconnect(true);
-    }
-
-    send(name: string, ...args: any[]): void {
-        this.socket.emit(name, args);
-    }
-
 }
