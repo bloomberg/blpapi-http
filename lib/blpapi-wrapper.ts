@@ -321,7 +321,7 @@ export class Session extends events.EventEmitter {
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
             if (!(requestName in REQUEST_TO_RESPONSE_MAP)) {
-                return callback(new Error('Unknown request type ' + requestName));
+                throw new Error('Unknown request type ' + requestName);
             }
             var responseEventName = REQUEST_TO_RESPONSE_MAP[requestName];
             this.session.request(uri, requestName, request, correlatorId);
