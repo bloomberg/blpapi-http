@@ -12,7 +12,7 @@ Reference Data Service (i.e. //blp/refdata) and the API Field Service
 
 This document provides an overview of the [HTTP API]: the URLs to use and the
 formatting for the HTTP requests and responses. We assume, for the purposes of
-this doc, that the server at http://blpapihost.example.com/ is running an
+this doc, that the server at http://http-api.openbloomberg.com/ is running an
 instance of this API.
 
 This document also includes basic information about some of the underlying
@@ -34,7 +34,7 @@ Requesting data
 Clients access services that use the Request/Response paradigm via `/request`:
 
 ```
-http://blpapihost.example.com/request?ns=<namespace>&service=<service>&type=<requestType>
+http://http-api.openbloomberg.com/request?ns=<namespace>&service=<service>&type=<requestType>
 ```
 
 `/request` requires three query parameters:
@@ -56,7 +56,7 @@ As an example, the following will request the open and last price for IBM and
 Apple stock for each day during the period Jan 1 - 5, 2012.
 
 ```
-curl -X POST 'http://blpapihost.example.com/request?ns=blp&service=refdata&type=HistoricalDataRequest' --data @- <<EOF
+curl -X POST 'http://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=HistoricalDataRequest' --data @- <<EOF
 { "securities": ["IBM US Equity", "AAPL US Equity"],
   "fields": ["PX_LAST", "OPEN"],
   "startDate": "20120101",
@@ -178,7 +178,7 @@ request must specify at least one security and at least one field.
 Example request/response:
 
 ```
-curl -X POST 'http://blpapihost.example.com/request?ns=blp&service=refdata&type=ReferenceDataRequest' --data @- <<EOF
+curl -X POST 'http://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=ReferenceDataRequest' --data @- <<EOF
 { "securities": ["IBM US Equity", "AAPL US Equity"],
   "fields": ["PX_LAST", "NAME", "EPS_ANNUALIZED"] }
 EOF
@@ -231,7 +231,7 @@ specify `"returnFieldDocumentation": "true"`.
 Example request/response:
 
 ```
-curl -X POST 'http://blpapihost.example.com/request&ns=blp&service=apiflds&type=FieldInfoRequest' --data @- <<EOF
+curl -X POST 'http://http-api.openbloomberg.com/request&ns=blp&service=apiflds&type=FieldInfoRequest' --data @- <<EOF
 { "id": ["NAME"],
   "returnFieldDocumentation": "true" }
 EOF
