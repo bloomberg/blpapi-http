@@ -9,7 +9,9 @@ This is the TypeScript style guide that captures everything not checked by
   1. [Files](#files)
   1. [Indentation](#indentation)
   1. [Line Length](#line-length)
-  1. [Expressions](#expressions)
+  1. [Statements](#statements)
+    1. [Return](#return)
+    1. [Switch](#switch)
   1. [Object and Array Literals](#object-and-array-literals)
 
 
@@ -47,7 +49,9 @@ quaility.
 
 **[top](#table-of-contents)**
 
-## Expressions
+## Statements
+
+### Return
 
   - Expressions in return statements should be surrounded by parenthesis for clarity.
     - If the expression contains one operand, parenthesis are not necessary.
@@ -89,6 +93,35 @@ quaility.
       return !a;
   }
   ```
+
+**[top](#table-of-contents)**
+
+### Switch
+
+Switch statements should have the following form:
+
+```typescript
+switch (/* expression */) {
+  // 2-space indent
+  case /* expression */: {
+    // 2-space indent from `case`; 4-space indent from `switch`
+    /* statements */
+  } break;
+  case /* expression */: {
+    // 2-space indent from `case`; 4-space indent from `switch`
+    /* statements */
+  } break;
+  default: {
+    /* always required */
+  } break;
+}
+```
+
+  - If a case statement is an intentional no-op, then a comment, `// no-op`, should be within the
+    respective case body to indicate the intended behavior.
+  - If the `default` case does not apply (i.e., cases cover all execution paths), then an
+    `assert` or `throw new Error()` expression should be used to indicate that the `default` case
+    should never be executed.
 
 **[top](#table-of-contents)**
 
