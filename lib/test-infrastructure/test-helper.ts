@@ -1,8 +1,11 @@
 /// <reference path='../../typings/tsd.d.ts' />
 
 import child = require('child_process');
+import debug = require('debug');
 import Promise = require('bluebird');
 import MockWrapper = require('./mock-blpapi-wrapper');
+
+var log = debug('child_server:stdout');
 
 export function startServer(instructions: MockWrapper.IInstruction): Promise<child.ChildProcess>
 {
@@ -11,17 +14,17 @@ export function startServer(instructions: MockWrapper.IInstruction): Promise<chi
     var server = child.spawn('node',
                              ['./lib/test-infrastructure/test-index.js', '--port=3000'],
                              { stdio: [null, null, null, 'ipc'] });
-/*
+
     server.stdout.on('data', (data: any): void => {
-      console.log('stdout: ' + data);
+        log(data.toString());
     });
     server.stderr.on('data', (data: any): void => {
-      console.log('stderr: ' + data);
+        log(data.toString());
     });
-    server.on('close', (data: any): void => {
-      console.log('child process exited with code ' + data);
+    server.on('close', (): void => {
+        log('child process exited');
     });
-*/
+
     return (new Promise<child.ChildProcess>((resolve: (result: child.ChildProcess) => void,
                                              reject: (error: Error) => void): void => {
         server.on('message', (m: any): void => {
