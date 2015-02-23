@@ -4,14 +4,7 @@ import child = require('child_process');
 import Promise = require('bluebird');
 import MockWrapper = require('./mock-blpapi-wrapper');
 
-export enum ServerType {
-    HTTP,
-    SOCKETIO,
-    WS
-};
-
-export function startServer(instructions: MockWrapper.IInstruction,
-                            sType: ServerType = ServerType.HTTP): Promise<child.ChildProcess>
+export function startServer(instructions: MockWrapper.IInstruction): Promise<child.ChildProcess>
 {
     // Set blpSession Instructions
     process.env.WRAPPER_INSTRUCTIONS = JSON.stringify(instructions);
@@ -32,9 +25,7 @@ export function startServer(instructions: MockWrapper.IInstruction,
     return (new Promise<child.ChildProcess>((resolve: (result: child.ChildProcess) => void,
                                              reject: (error: Error) => void): void => {
         server.on('message', (m: any): void => {
-            if (m.sType === ServerType[sType]) {
-                resolve(server);
-            }
+            resolve(server);
         });
     }));
 }

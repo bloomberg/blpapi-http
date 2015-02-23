@@ -21,6 +21,7 @@ var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 var serverOptions = conf.get('serverOptions');
 serverOptions.log = logger;     // Setup bunyan logger
 var server: restify.Server = restify.createServer(serverOptions);
+var pServers: Promise<void>[] = [];
 
 // Middleware
 server.pre(util.resetContentType);
@@ -70,12 +71,14 @@ server.on('error', (err: Error): void => {
 });
 server.on('listening', (): void => {
     logger.info('http server listening on', conf.get('port') );
-    process.send({  // signal parent process that HTTP server is ready(for testing)
-        sType: 'HTTP',
-        message: 'server startup'
-    });
 });
 server.on('after', util.after);
+pServers.push(new Promise<void>((resolve: () => void,
+                                 reject: (error: Error) => void): void => {
+    server.on('listening', (): void => {
+        resolve();
+    });
+}));
 
 // Socket.IO
 if (conf.get('websocket.socket-io.enable')) {
@@ -83,13 +86,15 @@ if (conf.get('websocket.socket-io.enable')) {
     serverSio.listen(conf.get('websocket.socket-io.port'));
     serverSio.on('listening', (): void => {
         logger.info('socket.io server listening on', conf.get('websocket.socket-io.port') );
-        process.send({  // signal parent process that SocketIO server is ready(for testing)
-            sType: 'SOCKETIO',
-            message: 'server startup'
-        });
     });
     var io: SocketIO.Namespace = sio(serverSio.server).of('/subscription');
     io.on('connection', webSocketHandler.sioOnConnect);
+    pServers.push(new Promise<void>((resolve: () => void,
+                                     reject: (error: Error) => void): void => {
+        serverSio.on('listening', (): void => {
+            resolve();
+        });
+    }));
 }
 
 // ws
@@ -98,11 +103,19 @@ if (conf.get('websocket.ws.enable')) {
     serverWS.listen(conf.get('websocket.ws.port'));
     serverWS.on('listening', (): void => {
         logger.info('ws server listening on', conf.get('websocket.ws.port') );
-        process.send({  // signal parent process that WS server is ready(for testing)
-            sType: 'WS',
-            message: 'server startup'
-        });
     });
     var wss = new webSocket.Server({ server: serverWS.server });
     wss.on('connection', webSocketHandler.wsOnConnect);
+    pServers.push(new Promise<void>((resolve: () => void,
+                                     reject: (error: Error) => void): void => {
+        serverWS.on('listening', (): void => {
+            resolve();
+        });
+    }));
 }
+
+// signal parent process that the server is ready(for testing)
+Promise.all(pServers)
+    .then((): void => {
+        process.send('server ready');
+    });
