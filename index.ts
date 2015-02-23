@@ -117,5 +117,7 @@ if (conf.get('websocket.ws.enable')) {
 // signal parent process that the server is ready(for testing)
 Promise.all(pServers)
     .then((): void => {
-        process.send('server ready');
+        if (process.send) {
+            process.send('server ready');
+        }
     });
