@@ -6,9 +6,6 @@ import Promise = require('bluebird');
 import _ = require('lodash');
 import BAPI = require('../blpapi-wrapper');
 
-// CONSTANTS
-var MAX_DELAY: number = 500;
-
 export interface IInstruction {
     start?: boolean;    // Default behavior is to start session successfully
     stop?: boolean;     // Default behavior is to stop session successfully
@@ -83,11 +80,10 @@ export class Session extends events.EventEmitter implements ISession {
         assert(this.instructions.request, 'No request instructions.');
         var p: Promise<void> = Promise.resolve();
         _(this.instructions.request).forEach((s: string): void => {
-            var delay = Math.floor((Math.random() * MAX_DELAY));
             p = p.then((): void => {
                     assert(this[s], 'Invalid operation ' + s);
                     this[s].call(this, cb);
-                }).delay(delay);
+                });
         });
     }
 
