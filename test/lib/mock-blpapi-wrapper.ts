@@ -4,7 +4,7 @@ import assert = require('assert');
 import events = require('events');
 import Promise = require('bluebird');
 import _ = require('lodash');
-import BAPI = require('../blpapi-wrapper');
+import BAPI = require('../../lib/blpapi-wrapper');
 
 export interface IInstruction {
     start?: boolean;    // Default behavior is to start session successfully

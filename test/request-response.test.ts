@@ -4,8 +4,8 @@ import child = require('child_process');
 import Promise = require('bluebird');
 import should = require('should');
 import request = require('request');
-import TestHelper = require('../lib/test-infrastructure/test-helper');
-import MockWrapper = require('../lib/test-infrastructure/mock-blpapi-wrapper');
+import TestHelper = require('./lib/test-helper');
+import MockWrapper = require('./lib/mock-blpapi-wrapper');
 should(true).ok;    // Added so ts won't get rid of should module
 
 var HOST = 'http://localhost:3000';

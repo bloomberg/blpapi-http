@@ -8,7 +8,7 @@ TEST_DIR = test
 SRCS_TS += index.ts
 SRCS_TS += $(shell find lib -type f -name '*.ts')
 
-SRCS_TEST_TS += $(wildcard $(TEST_DIR)/*.ts)
+SRCS_TEST_TS += $(shell find $(TEST_DIR) -type f -name '*.ts')
 
 SRCS_JS += $(patsubst %.ts,%.js,$(SRCS_TS))
 SRCS_TEST_JS += $(patsubst %.ts,%.js,$(SRCS_TEST_TS))

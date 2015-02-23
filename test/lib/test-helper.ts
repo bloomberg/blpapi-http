@@ -12,7 +12,7 @@ export function startServer(instructions: MockWrapper.IInstruction): Promise<chi
     // Set blpSession Instructions
     process.env.WRAPPER_INSTRUCTIONS = JSON.stringify(instructions);
     var server = child.spawn('node',
-                             ['./lib/test-infrastructure/test-index.js', '--port=3000'],
+                             ['./test/lib/test-index.js', '--port=3000'],
                              { stdio: [null, null, null, 'ipc'] });
 
     server.stdout.on('data', (data: any): void => {
