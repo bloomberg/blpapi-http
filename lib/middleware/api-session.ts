@@ -27,7 +27,7 @@ export function handleSession(req: Interface.IOurRequest,
 
     if (!apiSession) {
         // If this is a new subscription, create the session.
-        if (req.method === 'POST' && req.params.action === 'start') {
+        if (req.method === 'POST' && req.query.action === 'start') {
             apiSession = new Session(req.blpSession);
             SESSIONSTORE.set(req.clientCert.fingerprint, apiSession);
             req.log.debug('New apisession created.');
