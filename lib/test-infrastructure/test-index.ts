@@ -4,6 +4,7 @@
 import assert = require('assert');
 import mockery = require('mockery');
 import MockWrapper = require('./mock-blpapi-wrapper');
+
 mockery.registerMock('../blpapi-wrapper', MockWrapper);
 mockery.enable({
     useCleanCache: true,
@@ -17,4 +18,5 @@ process.on('exit', (): void => {
 
 // Run actual index.js
 import index = require('../../index');
+
 assert(index);  // Have this line so ts will detect a usage of index module
