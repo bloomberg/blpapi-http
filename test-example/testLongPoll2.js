@@ -48,7 +48,7 @@ function clientRequest(clientId) {
 
     // Subscribe
     request.postAsync({
-        url : HOST + '/subscribe',
+        url : HOST + '/subscription?action=start',
         body : [
                 { security: 'AAPL US Equity', correlationId: 0, fields: ['LAST_PRICE'] },
                 { security: 'GOOG US Equity', correlationId: 1, fields: ['LAST_PRICE'] }
@@ -75,7 +75,7 @@ function clientRequest(clientId) {
                 var delay = Math.floor((Math.random() * MAX_DELAY));
                 var t = process.hrtime();
                 request.getAsync({
-                    url : HOST + '/poll?pollid=' + result.poll,
+                    url : HOST + '/subscription?pollid=' + result.poll,
                     pool: agent,
                     agentOptions: opt
                 })
@@ -99,7 +99,7 @@ function clientRequest(clientId) {
             }
             else {
                 request.postAsync({
-                    url : HOST + '/unsubscribe',
+                    url : HOST + '/subscription?action=stop',
                     body : JSON.stringify({ correlationIds: [0] }),
                     pool: agent,
                     agentOptions: opt
@@ -109,7 +109,7 @@ function clientRequest(clientId) {
                 })
                 .then(function() {
                     return request.getAsync({
-                        url : HOST + '/poll?pollid=1',
+                        url : HOST + '/subscription?pollid=1',
                         pool: agent,
                         agentOptions: opt
                     });
