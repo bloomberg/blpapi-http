@@ -17,8 +17,8 @@ export interface IBufferedData<T> {
 }
 
 export interface IOurResponse extends restify.Response {
-    sendChunk?: (data: any) => Promise<void>;
-    sendEnd?: (status: any, message: string) => Promise<void>;
+    sendChunk?: (data: any) => void;
+    sendEnd?: (status: any, message: string) => void;
 }
 
 export interface ISocket extends NodeJS.EventEmitter {
