@@ -23,6 +23,15 @@ serverOptions.log = logger;     // Setup bunyan logger
 var server: restify.Server = restify.createServer(serverOptions);
 var pServers: Promise<void>[] = [];
 
+function addServerPromise(s: restify.Server): void {
+    pServers.push(new Promise<void>((resolve: () => void,
+                                     reject: (error: Error) => void): void => {
+        s.on('listening', (): void => {
+            resolve();
+        });
+    }));
+}
+
 // Middleware
 server.pre(util.resetContentType);
 server.pre(restify.pre.sanitizePath());
@@ -106,12 +115,3 @@ Promise.all(pServers)
             process.send('server ready');
         }
     });
-
-function addServerPromise(s: restify.Server): void {
-    pServers.push(new Promise<void>((resolve: () => void,
-                                     reject: (error: Error) => void): void => {
-        s.on('listening', (): void => {
-            resolve();
-        });
-    }));
-}
