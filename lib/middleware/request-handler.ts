@@ -146,21 +146,17 @@ export function elevateRequest (req: Interface.IOurRequest,
         return '"' + key.replace(/'/g, '\\$&') + '":' + JSON.stringify(value);
     }
 
-    res.sendChunk = (data: any): Promise<void> => {
+    res.sendChunk = (data: any): void => {
         var text = prepareResponseText(false);
         res.write(text + JSON.stringify(data));
-        // TODO: Remove this return value when subscription code is simplified. See issue #87.
-        return Promise.resolve();
     };
 
-    res.sendEnd = (status: string, message: string): Promise<void> => {
+    res.sendEnd = (status: string, message: string): void => {
         var text = util.format('%s%s,%s}',
                                prepareResponseText(true),
                                stringifyPair('status', status),
                                stringifyPair('message', message || ''));
         res.end(text);
-        // TODO: Remove this return value when subscription code is simplified. See issue #87.
-        return Promise.resolve();
     };
 
     return next();
@@ -252,13 +248,13 @@ export function onSubscribe(req: Interface.IOurRequest,
         // Subscribe user request through blpapi-wrapper
         return req.blpSession.subscribe(subscriptions);
     })()
-        .then((): Promise<void> => {
+        .then((): void => {
             if (!req.apiSession.expired) {
                 subscriptions.forEach((s: Subscription): void => {
                     req.apiSession.activeSubscriptions.set(s.correlationId, s);
                 });
                 req.log.debug('Subscribed');
-                return res.sendEnd(0, 'Subscribed');
+                res.sendEnd(0, 'Subscribed');
             } else { // Unsubscribe if session already expires
                 req.blpSession.unsubscribe(subscriptions);
                 subscriptions.forEach((s: Subscription): void => {
@@ -266,10 +262,9 @@ export function onSubscribe(req: Interface.IOurRequest,
                     req.apiSession.receivedSubscriptions.delete(s.correlationId);
                 });
                 req.log.debug('Unsubscribed all active subscriptions');
-                return Promise.resolve();
             }
+            return next();
         })
-        .then(next)
         .catch((err: Error): any => {
             subscriptions.forEach((s: Subscription): void => {
                 req.apiSession.receivedSubscriptions.delete(s.correlationId);
@@ -342,13 +337,11 @@ export function onPollSubscriptions(req: Interface.IOurRequest,
             })();
     }
 
-    p.then((result: Object[]): Promise<void> => {
-        return res.sendChunk(result);
+    p.then((result: Object[]): void => {
+        res.sendChunk(result);
+        res.sendEnd(0, 'OK');
+        return next();
     })
-        .then((): Promise<void> => {
-            return res.sendEnd( 0, 'OK' );
-        })
-        .then(next)
         .catch(Promise.TimeoutError, (err: Error): any => {
             if (interval) {
                 clearInterval(interval);
@@ -419,7 +412,7 @@ export function onUnsubscribe(req: Interface.IOurRequest,
         }
     }
 
-    ((): Promise<Object[]> => {
+    try {
         var result: Object[] = [];
         req.blpSession.unsubscribe(subscriptions);
         subscriptions.forEach((sub: Subscription): void => {
@@ -438,19 +431,13 @@ export function onUnsubscribe(req: Interface.IOurRequest,
             req.apiSession.lastPollId = req.apiSession.lastSuccessPollId = null;
         }
 
-        return Promise.resolve(result);
-    })()
-        .then((result: Object[]): Promise<void> => {
-            return res.sendChunk(result);
-        })
-        .then((): Promise<void> => {
-            return res.sendEnd(0, 'Unsubscribe Successfully');
-        })
-        .then(next)
-        .catch((err: Error): any => {
-            req.log.error(err, 'Unsubscription error');
-            return next(new restify.InternalError(err.message));
-        });
+        res.sendChunk(result);
+        res.sendEnd(0, 'Unsubscribe Successfully');
+        return next();
+    } catch (err) {
+        req.log.error(err, 'Unsubscription error');
+        return next(new restify.InternalError(err.message));
+    }
 }
 
 export function onChangeSubscriptions(req: Interface.IOurRequest,
