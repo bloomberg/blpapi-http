@@ -10,8 +10,8 @@ export interface IInstruction {
     start?: boolean;    // Default behavior is to start session successfully
     stop?: boolean;     // Default behavior is to stop session successfully
     request: string[];
-    //subscribe?: string[];
-    //unsubscribe?: string[];
+    subscribe?: string[];   // Not yet implemented
+    unsubscribe?: string[]; // Not yet implemented
 }
 
 // Re-export BAPI public interfaces/classes
