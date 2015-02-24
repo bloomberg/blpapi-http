@@ -73,12 +73,7 @@ server.on('listening', (): void => {
     logger.info('http server listening on', conf.get('port') );
 });
 server.on('after', util.after);
-pServers.push(new Promise<void>((resolve: () => void,
-                                 reject: (error: Error) => void): void => {
-    server.on('listening', (): void => {
-        resolve();
-    });
-}));
+addServerPromise(server);
 
 // Socket.IO
 if (conf.get('websocket.socket-io.enable')) {
@@ -89,12 +84,7 @@ if (conf.get('websocket.socket-io.enable')) {
     });
     var io: SocketIO.Namespace = sio(serverSio.server).of('/subscription');
     io.on('connection', webSocketHandler.sioOnConnect);
-    pServers.push(new Promise<void>((resolve: () => void,
-                                     reject: (error: Error) => void): void => {
-        serverSio.on('listening', (): void => {
-            resolve();
-        });
-    }));
+    addServerPromise(serverSio);
 }
 
 // ws
@@ -106,12 +96,7 @@ if (conf.get('websocket.ws.enable')) {
     });
     var wss = new webSocket.Server({ server: serverWS.server });
     wss.on('connection', webSocketHandler.wsOnConnect);
-    pServers.push(new Promise<void>((resolve: () => void,
-                                     reject: (error: Error) => void): void => {
-        serverWS.on('listening', (): void => {
-            resolve();
-        });
-    }));
+    addServerPromise(serverWS);
 }
 
 // signal parent process that the server is ready(for testing)
@@ -121,3 +106,12 @@ Promise.all(pServers)
             process.send('server ready');
         }
     });
+
+function addServerPromise(s: restify.Server): void {
+    pServers.push(new Promise<void>((resolve: () => void,
+                                     reject: (error: Error) => void): void => {
+        s.on('listening', (): void => {
+            resolve();
+        });
+    }));
+}
