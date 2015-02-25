@@ -146,6 +146,12 @@ export function elevateRequest (req: Interface.IOurRequest,
         return '"' + key.replace(/'/g, '\\$&') + '":' + JSON.stringify(value);
     }
 
+    // Right now we only use restify.InternalError(500)
+    // TODO: Add error type differentiation
+    function createError(err: Error): any {
+        return new restify.InternalError(err.message);
+    }
+
     res.sendChunk = (data: any): void => {
         var text = prepareResponseText(false);
         res.write(text + JSON.stringify(data));
@@ -159,6 +165,15 @@ export function elevateRequest (req: Interface.IOurRequest,
         res.end(text);
     };
 
+    res.sendError = (err: Error): void|any => {
+        // send Error if this is the first chunk
+        if (chunkIndex === 0) {
+            return createError(err);
+        }
+        // Otherwise, set -1 as status code and error message
+        return res.sendEnd(-1, err.message);
+    };
+
     return next();
 }
 
@@ -168,13 +183,18 @@ export function onRequest(req: Interface.IOurRequest,
 {
     assert(req.blpSession, 'blpSession not found');
 
+    req.blpSession.once('SessionTerminated', (): void => {
+        var errText = 'blpSession terminated unexpectedly.';
+        req.log.error(errText);
+        return next(res.sendError(new Error(errText)));
+    });
     req.blpSession.request(util.format('//%s/%s', req.query.ns, req.query.service),
                            req.query.type,
                            req.body,
                            (err: Error, data: any, last: boolean): void => {
                                if (err) {
                                    req.log.error(err, 'Request error.');
-                                   return next(new restify.InternalError(err.message));
+                                   return next(res.sendError(err));
                                }
                                res.sendChunk(data);
                                if (last) {
