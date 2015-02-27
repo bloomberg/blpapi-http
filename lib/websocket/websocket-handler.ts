@@ -123,7 +123,7 @@ function setup(socket: Interface.ISocket): void
             // Add event listener for each subscription
             sub.on('data', (data: any): void => {
                 socket.log.debug({data: {cid: sub.correlationId, time: process.hrtime()}},
-                                'Data received');
+                                 'Data received');
 
                 // Emit the data
                 // TODO: Acknowledgement callback function?

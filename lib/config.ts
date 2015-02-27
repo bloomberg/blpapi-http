@@ -279,11 +279,11 @@ export var emitter = new events.EventEmitter();
         var crlPath = path.resolve(__dirname, convictConf.get('https.crl'));
         otherConf['serverOptions'].httpsServerOptions = {
             key: fs.readFileSync(path.resolve(__dirname,
-                convictConf.get('https.key'))),
+                                              convictConf.get('https.key'))),
             cert: fs.readFileSync(path.resolve(__dirname,
-                convictConf.get('https.cert'))),
+                                               convictConf.get('https.cert'))),
             ca: fs.readFileSync(path.resolve(__dirname,
-                convictConf.get('https.ca'))),
+                                             convictConf.get('https.ca'))),
             crl: fs.readFileSync(crlPath),
             requestCert: true,
             rejectUnauthorized: true

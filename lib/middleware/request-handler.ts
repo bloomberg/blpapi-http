@@ -242,7 +242,7 @@ export function onSubscribe(req: Interface.IOurRequest,
             // Add event listener for each subscription
             sub.on('data', (data: any): void => {
                 req.log.debug({data: {cid: sub.correlationId, time: process.hrtime()}},
-                             'Data received');
+                              'Data received');
 
                 // Buffer the current data
                 sub.buffer.pushValue(data);
@@ -327,19 +327,21 @@ export function onPollSubscriptions(req: Interface.IOurRequest,
 
                 return (new Promise<Object[]>((resolve: (result: Object[]) => void,
                                                reject: (error: Error) => void): void => {
-                    interval = setInterval((): void => {
-                        if (!req.apiSession.activeSubscriptions.size) {
-                            clearInterval(interval);
-                            reject(new Error('No active subscriptions'));
-                        }
-                        var buffer = startAllNewBuffers(req.apiSession.activeSubscriptions);
-                        if (buffer.length) {
-                            clearInterval(interval);
-                            req.apiSession.lastSuccessPollId = pollId;
-                            req.log.debug('Got data. Sent back.');
-                            resolve(buffer);
-                        }
-                    }, frequency);
+                    interval = setInterval(
+                        (): void => {
+                            if (!req.apiSession.activeSubscriptions.size) {
+                                clearInterval(interval);
+                                reject(new Error('No active subscriptions'));
+                            }
+                            var buffer = startAllNewBuffers(req.apiSession.activeSubscriptions);
+                            if (buffer.length) {
+                                clearInterval(interval);
+                                req.apiSession.lastSuccessPollId = pollId;
+                                req.log.debug('Got data. Sent back.');
+                                resolve(buffer);
+                            }
+                        },
+                        frequency);
                 }))
                     .timeout(timeOut)
                     .cancellable();
@@ -438,8 +440,9 @@ export function onUnsubscribe(req: Interface.IOurRequest,
             req.apiSession.activeSubscriptions.delete(sub.correlationId);
             req.apiSession.receivedSubscriptions.delete(sub.correlationId);
         });
-        req.log.debug({activeSubscriptions:
-                       req.apiSession.activeSubscriptions.size}, 'Unsubscribed.');
+        req.log.debug({ activeSubscriptions:
+                       req.apiSession.activeSubscriptions.size },
+                      'Unsubscribed.');
 
         // Reset poll Id to null if all subscriptions get unsubscribed
         if (!req.apiSession.receivedSubscriptions.size) {

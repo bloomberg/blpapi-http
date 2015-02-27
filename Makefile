@@ -19,7 +19,8 @@ TSC_BIN := $(addprefix $(BIN_PREFIX)/,tsc)
 TSC_COMMON := --module commonjs --target ES5 --sourceMap --noImplicitAny --noEmitOnError
 TSC := $(TSC_BIN) $(TSC_COMMON)
 
-TSLINT := $(addprefix $(BIN_PREFIX)/,tslint)
+TSLINT_RULES_DIR := tslint-rules
+TSLINT := $(addprefix $(BIN_PREFIX)/,tslint) -r $(TSLINT_RULES_DIR)
 TSLINT_CONFIG := tslint.json
 TSLINT_TARGET := .tslint.d
 TSLINT_TEST_TARGET := $(addprefix $(TEST_DIR)/,.tslint.d)
@@ -31,7 +32,7 @@ MOCHA := $(MOCHA_BIN) $(MOCHA_COMMON)
 RM ?= rm -f
 TOUCH ?= touch
 
-.PHONY: all build check dependecies tslint test test-mocha clean
+.PHONY: all build check dependencies tslint test test-mocha clean
 
 all: dependencies build tslint
 
@@ -48,14 +49,20 @@ build: $(SRCS_JS)
 
 build-test: $(SRCS_TEST_JS)
 
-tslint: $(TSLINT_TARGET)
+build-rules:
+	@$(MAKE) -s -C $(TSLINT_RULES_DIR)
+
+clean-rules:
+	@$(MAKE) -s -C $(TSLINT_RULES_DIR) clean
+
+tslint: build-rules $(TSLINT_TARGET)
 
 tslint-test: $(TSLINT_TEST_TARGET)
 
 test-mocha: build build-test tslint-test
 	@$(MOCHA)
 
-clean:
+clean: clean-rules
 	@$(RM) $(SRCS_JS) $(patsubst %.js,%.js.map,$(SRCS_JS))
 	@$(RM) $(SRCS_TEST_JS) $(patsubst %.js,%.js.map,$(SRCS_TEST_JS))
 	@$(RM) $(TSC_TARGET) $(TSLINT_TARGET) $(TSLINT_TEST_TARGET)
