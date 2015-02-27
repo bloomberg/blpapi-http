@@ -15,3 +15,6 @@
 /// <reference path="express-validator/express-validator.d.ts" />
 /// <reference path="express/express.d.ts" />
 /// <reference path="express-validator/restify-validator.d.ts" />
+/// <reference path="request/request.d.ts" />
+/// <reference path="form-data/form-data.d.ts" />
+/// <reference path="mockery/mockery.d.ts" />

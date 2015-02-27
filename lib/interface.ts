@@ -7,7 +7,7 @@ import Session = require('./apisession/session');
 
 export interface IOurRequest extends restify.Request {
     clientCert?: any;
-    blpSession: BAPI.Session;
+    blpSession: BAPI.ISession;
     apiSession?: Session;
 }
 
@@ -25,7 +25,7 @@ export interface IOurResponse extends restify.Response {
 export interface ISocket extends NodeJS.EventEmitter {
     // PROPERTIES
     log: bunyan.Logger; // Add bunyan logger to socket
-    blpSession: BAPI.Session;  // Add blpSession to socket
+    blpSession: BAPI.ISession;  // Add blpSession to socket
 
     // MANIPULATORS
     sendData(correlationId: number, data: any): void;

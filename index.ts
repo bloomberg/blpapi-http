@@ -21,6 +21,16 @@ var logger: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 var serverOptions = conf.get('serverOptions');
 serverOptions.log = logger;     // Setup bunyan logger
 var server: restify.Server = restify.createServer(serverOptions);
+var pServers: Promise<void>[] = [];
+
+function addServerPromise(s: restify.Server): void {
+    pServers.push(new Promise<void>((resolve: () => void,
+                                     reject: (error: Error) => void): void => {
+        s.on('listening', (): void => {
+            resolve();
+        });
+    }));
+}
 
 // Middleware
 server.pre(util.resetContentType);
@@ -72,6 +82,7 @@ server.on('listening', (): void => {
     logger.info('http server listening on', conf.get('port') );
 });
 server.on('after', util.after);
+addServerPromise(server);
 
 // Socket.IO
 if (conf.get('websocket.socket-io.enable')) {
@@ -82,6 +93,7 @@ if (conf.get('websocket.socket-io.enable')) {
     });
     var io: SocketIO.Namespace = sio(serverSio.server).of('/subscription');
     io.on('connection', webSocketHandler.sioOnConnect);
+    addServerPromise(serverSio);
 }
 
 // ws
@@ -93,4 +105,13 @@ if (conf.get('websocket.ws.enable')) {
     });
     var wss = new webSocket.Server({ server: serverWS.server });
     wss.on('connection', webSocketHandler.wsOnConnect);
+    addServerPromise(serverWS);
 }
+
+// signal parent process that the server is ready(for testing)
+Promise.all(pServers)
+    .then((): void => {
+        if (process.send) {
+            process.send('server ready');
+        }
+    });

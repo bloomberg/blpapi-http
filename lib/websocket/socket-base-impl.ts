@@ -12,7 +12,7 @@ class SocketBaseImpl extends emitterAdapter.SocketEventEmitterAdapter implements
 
     // DATA
     private _logger: bunyan.Logger;
-    private _blpapiSession: blpapi.Session;
+    private _blpapiSession: blpapi.ISession;
 
     // PROTECTED MANIPULATORS
     protected send(name: string, ...args: any[]): void {
@@ -61,11 +61,11 @@ class SocketBaseImpl extends emitterAdapter.SocketEventEmitterAdapter implements
 
     // PROPERTIES
     /* tslint:disable:typedef */
-    set blpSession(session: blpapi.Session) {
+    set blpSession(session: blpapi.ISession) {
         this._blpapiSession = session;
     }
     /* tslint:enable:typedef */
-    get blpSession(): blpapi.Session {
+    get blpSession(): blpapi.ISession {
         return this._blpapiSession;
     }
 
