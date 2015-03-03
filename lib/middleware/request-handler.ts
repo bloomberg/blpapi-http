@@ -183,11 +183,6 @@ export function onRequest(req: Interface.IOurRequest,
 {
     assert(req.blpSession, 'blpSession not found');
 
-    req.blpSession.once('SessionTerminated', (): void => {
-        var errText = 'blpSession terminated unexpectedly.';
-        req.log.error(errText);
-        return next(res.sendError(new Error(errText)));
-    });
     req.blpSession.request(util.format('//%s/%s', req.query.ns, req.query.service),
                            req.query.type,
                            req.body,
