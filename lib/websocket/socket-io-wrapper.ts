@@ -11,8 +11,8 @@ class SocketIOWrapper extends SocketBaseImpl {
     private socket: SocketIO.Socket;
 
     // PROTECTED MANIPULATORS
-    protected send(name: string, ...args: any[]): void {
-        this.socket.emit(name, args);
+    protected send(name: string, arg?: any): void {
+        this.socket.emit(name, arg);
     }
 
     // CREATORS
