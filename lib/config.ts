@@ -1,5 +1,6 @@
 /// <reference path='../typings/tsd.d.ts' />
 
+import events = require('events');
 import fs = require('fs');
 import path = require('path');
 import convict = require('convict');
@@ -17,6 +18,8 @@ export function get(name: string): any
 
     return convictConf.get(name);
 }
+
+export var emitter = new events.EventEmitter();
 
 // Initialization
 ((): void =>
@@ -77,6 +80,12 @@ export function get(name: string): any
                 format: String,
                 default: '../keys/hackathon-key.pem',
                 arg: 'https-key'
+            },
+            'crl': {
+                doc: 'HTTPS server certificate revocation list',
+                format: String,
+                default: '../keys/hackathon-crl.pem',
+                arg: 'https-crl'
             }
         },
         'logging': {
@@ -267,6 +276,7 @@ export function get(name: string): any
         acceptable: ['application/json']
     };
     if (convictConf.get('https.enable')) {
+        var crlPath = path.resolve(__dirname, convictConf.get('https.crl'));
         otherConf['serverOptions'].httpsServerOptions = {
             key: fs.readFileSync(path.resolve(__dirname,
                 convictConf.get('https.key'))),
@@ -274,9 +284,17 @@ export function get(name: string): any
                 convictConf.get('https.cert'))),
             ca: fs.readFileSync(path.resolve(__dirname,
                 convictConf.get('https.ca'))),
+            crl: fs.readFileSync(crlPath),
             requestCert: true,
             rejectUnauthorized: true
         };
+
+        // Setup file watch for crl changes
+        fs.watch(crlPath, (event: string, filename: string): void => {
+            // Re-read the crl file
+            otherConf['serverOptions'].httpsServerOptions.crl = fs.readFileSync(crlPath);
+            emitter.emit('change', 'https.crl');  // Signal the server that config changes
+        });
     }
 
     // BLPAPI Session options

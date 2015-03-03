@@ -27,6 +27,11 @@ function createSession(sessionId: string): Promise<blpapi.Session>
                     LOGGER.info('blpSession termintated.');
                     delete SESSION_STORE[sessionId];
                 });
+                // Close the blpSession when config changes
+                conf.emitter.once('change', (config: string): void => {
+                    LOGGER.info('Server Config ' + config + ' changes. Stop blpSession.');
+                    s.stop();
+                });
                 return s;
             })
             .catch((err: Error): any => {  // Use any to make ts happy
