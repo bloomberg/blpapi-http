@@ -12,8 +12,8 @@ class WSWrapper extends SocketBaseImpl {
     private socket: webSocket;
 
     // PROTECTED MANIPULATORS
-    protected send(name: string, ...args: any[]): void {
-        this.socket.send(JSON.stringify({type: name, data: args}));
+    protected send(name: string, arg?: any): void {
+        this.socket.send(JSON.stringify({type: name, data: arg}));
     }
 
     // CREATORS

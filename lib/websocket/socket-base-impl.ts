@@ -15,7 +15,7 @@ class SocketBaseImpl extends emitterAdapter.SocketEventEmitterAdapter implements
     private _blpapiSession: blpapi.Session;
 
     // PROTECTED MANIPULATORS
-    protected send(name: string, ...args: any[]): void {
+    protected send(name: string, arg?: any): void {
         throw new Error('send() must be implemented');
     }
 
