@@ -320,12 +320,10 @@ export class Session extends events.EventEmitter {
         this.openService(uri).then((): void => {
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
-            if (!(requestName in REQUEST_TO_RESPONSE_MAP)) {
-                throw new Error('Unknown request type ' + requestName);
-            }
-            var responseEventName = REQUEST_TO_RESPONSE_MAP[requestName];
             this.session.request(uri, requestName, request, correlatorId);
-            this.listen(responseEventName,
+            assert(requestName in REQUEST_TO_RESPONSE_MAP,
+                   util.format('Request, %s, not handled', requestName));
+            this.listen(REQUEST_TO_RESPONSE_MAP[requestName],
                         correlatorId,
                         this.requestHandler.bind(this, callback));
         }).catch((ex: Error): void => {
@@ -373,11 +371,9 @@ export class Session extends events.EventEmitter {
                 //      until ES6 Map is available
                 this.subscriptions[cid] = s;
 
-                // Lookup by service the events we need to listen to.
-                if (!(serviceUri in SERVICE_TO_SUBSCRIPTION_EVENTS_MAP)) {
-                    throw new Error('Unknown service: ' + serviceUri);
-                }
-                var events: string[] = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri];
+                assert(serviceUri in SERVICE_TO_SUBSCRIPTION_EVENTS_MAP,
+                       util.format('Service, %s, not handled', serviceUri));
+                var events = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri];
                 events.forEach((event: string): void => {
                     log('listening on event: ' + event + ' for cid: ' + cid);
                     this.listen(event, cid, (m: any): void => {
