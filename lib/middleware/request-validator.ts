@@ -23,7 +23,7 @@ function validateRequest(check: (req: Interface.IOurRequest) => void): restify.R
                 errors)));
         }
         return next();
-    };
+    }
 
     return validateRequest;
 }
