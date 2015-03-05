@@ -57,7 +57,7 @@ clean-rules:
 
 tslint: build-rules $(TSLINT_TARGET)
 
-tslint-test: $(TSLINT_TEST_TARGET)
+tslint-test: build-rules $(TSLINT_TEST_TARGET)
 
 test-mocha: build build-test tslint-test
 	@$(MOCHA)
