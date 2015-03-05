@@ -5,20 +5,21 @@ The [Bloomberg Open API] provides access to market data. The
 [Bloomberg HTTP API] makes the [Open API] available via HTTP: clients POST
 commands to a HTTP server, which will respond with the corresponding data.
 
-The [HTTP API] is currently in development and does not yet provide access
-to all services that the [Open API] provides. At this time it supports the
-Reference Data Service (i.e. //blp/refdata) and the API Field Service
-(//blp/apiflds).
-
 This document provides an overview of the [HTTP API]: the URLs to use and the
-formatting for the HTTP requests and responses. We assume, for the purposes of
-this doc, that the server at http://http-api.openbloomberg.com/ is running an
-instance of this API.
+formatting for the HTTP requests and responses. Bloomberg operates a server at
+https://http-api.openbloomberg.com/ that runs an instance of this API for demo
+and other purposes (e.g., hackathons). All examples in this document, as well
+as elsewhere in this project, are written to work with this server (e.g., they
+use client certificates for authentication/identity).
 
 This document also includes basic information about some of the underlying
 [Open API] operations. For more details on the [Open API], refer to the
 [BLPAPI Developer's Guide]. Where appropriate, this document will refer to
 specific sections of the [Developer's Guide].
+
+The [HTTP API] is currently in development and future versions may add or
+change functionality. For example, additional authentication options may become
+available in the future.
 
 [Bloomberg Open API]: http://bloomberglabs.com/api
 [Open API]: http://bloomberglabs.com/api
@@ -34,7 +35,7 @@ Requesting data
 Clients access services that use the Request/Response paradigm via `/request`:
 
 ```
-http://http-api.openbloomberg.com/request?ns=<namespace>&service=<service>&type=<requestType>
+https://http-api.openbloomberg.com/request?ns=<namespace>&service=<service>&type=<requestType>
 ```
 
 `/request` requires three query parameters:
@@ -56,7 +57,11 @@ As an example, the following will request the open and last price for IBM and
 Apple stock for each day during the period Jan 1 - 5, 2012.
 
 ```
-curl -X POST 'http://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=HistoricalDataRequest' --data @- <<EOF
+curl -X POST 'https://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=HistoricalDataRequest' \
+    --cacert bloomberg.crt \
+    --cert   client.crt    \
+    --key    client.key    \
+    --data @- <<EOF
 { "securities": ["IBM US Equity", "AAPL US Equity"],
   "fields": ["PX_LAST", "OPEN"],
   "startDate": "20120101",
@@ -103,10 +108,10 @@ section A.2.14 of the [Developer's Guide].
 
 Note that `"message": "OK"` doesn't necessarily mean that the request
 successfully got useful data. If the HTTP server successfully makes the Open
-API call but there was an error in executing the operation (e.g. because a
+API call but there was an error in executing the operation (e.g., because a
 required parameter for that operation was not specified), then `"status": 0`
 and `"message": "OK"` but the data returned from the API will contain an error
-(e.g. in a `responseError` property of the data, or a `securityError` property
+(e.g., in a `responseError` property of the data, or a `securityError` property
 of one or more of the `securityData`).
 
 Below is the response from the example request in the previous section. Notice
@@ -178,7 +183,11 @@ request must specify at least one security and at least one field.
 Example request/response:
 
 ```
-curl -X POST 'http://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=ReferenceDataRequest' --data @- <<EOF
+curl -X POST 'https://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=ReferenceDataRequest' \
+    --cacert bloomberg.crt \
+    --cert   client.crt    \
+    --key    client.key    \
+    --data @- <<EOF
 { "securities": ["IBM US Equity", "AAPL US Equity"],
   "fields": ["PX_LAST", "NAME", "EPS_ANNUALIZED"] }
 EOF
@@ -210,8 +219,8 @@ There are more fields available than can be enumerated in this document.
 To search for and get information about fields using a Bloomberg Terminal,
 use `FLDS<GO>`. You can also use the HTTP API to query the `/blp/apiflds`
 service. The API Field Service allows you to get information about a specific
-field as well as search for fields (useful if you want to discover fields, e.g.
-if you don't know the name of the field that contains the last price).
+field as well as search for fields (useful if you want to discover fields,
+e.g., if you don't know the name of the field that contains the last price).
 
 This service is detailed in sections 7.6 and A.3 of the [Developer's Guide].
 
@@ -231,7 +240,11 @@ specify `"returnFieldDocumentation": "true"`.
 Example request/response:
 
 ```
-curl -X POST 'http://http-api.openbloomberg.com/request&ns=blp&service=apiflds&type=FieldInfoRequest' --data @- <<EOF
+curl -X POST 'https://http-api.openbloomberg.com/request&ns=blp&service=apiflds&type=FieldInfoRequest' \
+    --cacert bloomberg.crt \
+    --cert   client.crt    \
+    --key    client.key    \
+    --data @- <<EOF
 { "id": ["NAME"],
   "returnFieldDocumentation": "true" }
 EOF
