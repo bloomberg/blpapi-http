@@ -55,3 +55,8 @@ export function requireChoiceQueryParam(param: string, values: string[]): restif
         req.checkQuery(param, 'Invalid ' + param).isIn(values);
     });
 }
+
+export function requireActionQueryParam(values: string[]): restify.RequestHandler
+{
+    return requireChoiceQueryParam('action', values);
+}

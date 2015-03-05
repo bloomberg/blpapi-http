@@ -19,19 +19,30 @@ declare module "blpapi" {
         correlation: number;
     }
 
+    // Opaque object representing an authorized Identity.
+    export interface Identity {
+
+    }
+
     import EventEmitter = NodeJS.EventEmitter;
 
     export class Session implements EventEmitter {
         constructor (args: SessionOpts);
         start(): Session;
         authorize(uri: string, cid: number): number;
+        authorizeUser(request: any, cid: number): number;
         stop(): Session;
         destroy(): Session;
         openService(uri: string, cid: number): number;
-        subscribe(subs: Subscription[], label?: string): Session;
+        subscribe(subs: Subscription[], identity?: Identity, label?: string): Session;
         resubscribe(subs: Subscription[], label?: string): Session;
         unsubscribe(subs: Subscription[]): Session;
-        request(uri: string, name: string, request: any, cid: number, label?: string): number;
+        request(uri: string,
+                name: string,
+                request: any,
+                cid: number,
+                identity?: Identity,
+                label?: string): number;
 
         addListener(event: string, listener: Function): EventEmitter;
         on(event: string, listener: Function): EventEmitter;
