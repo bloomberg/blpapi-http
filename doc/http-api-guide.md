@@ -1,5 +1,4 @@
-HTTP API
-========
+# HTTP API
 
 The [Bloomberg Open API] provides access to market data. The
 [Bloomberg HTTP API] makes the [Open API] available via HTTP: clients POST
@@ -29,10 +28,10 @@ available in the future.
 [Developer's Guide]: http://www.bloomberglabs.com/files/2014/07/blpapi-developers-guide-2.54.pdf
 
 
-Requesting data
----------------
+## Request/Response data
 
-Clients access services that use the Request/Response paradigm via `/request`:
+Clients access services that use the request/response paradigm via a HTTP post
+to the path `/request`:
 
 ```
 https://http-api.openbloomberg.com/request?ns=<namespace>&service=<service>&type=<requestType>
@@ -41,13 +40,13 @@ https://http-api.openbloomberg.com/request?ns=<namespace>&service=<service>&type
 `/request` requires three query parameters:
 
 * `ns` -- The namespace for the service on which we're making the request.
-Currently all services are in the `blp` namespace.
+  Currently all services are in the `blp` namespace.
 * `service` -- The service on which we're making the request. Currently
-`refdata` and `apiflds` are supported; more will be added in future
-versions.
+  `refdata` and `apiflds` are supported; more will be added in future
+  versions.
 * `type` -- The request type for this operation. For `//blp/refdata`,
-the operations are listed in section A.2.1 (and detailed in section 7.2) of the
-[Developer's Guide].
+  the operations are listed in section A.2.1 (and detailed in section 7.2) of the
+  [Developer's Guide].
 
 The body of the POST should consist of a JSON object containing the parameters
 for the request. Each operation defines what parameters it uses; sections 7.2
@@ -71,11 +70,10 @@ EOF
 ```
 
 
-HTTP request headers
---------------------
+### HTTP request headers
 
-The client may specify the following HTTP request headers to tell the server
-what sorts of responses it can use:
+The client may specify the following HTTP request headers to inform the server
+of its capabilities in handling the response:
 
 * `accept`: Content types. The server currently supports `application/json`.
 Future versions may support other types.
@@ -92,19 +90,18 @@ ignores this header for now. Future versions may support additional formats,
 so we encourage clients to explicitly specify this header.
 
 
-Response format
----------------
+### HTTP response format
 
 The HTTP response message body consists of a JSON object with the following
 properties:
 
 * `status`: If we successfully communicated with the Open API, this will be 0.
-Otherwise, it will contain details about the error.
+  Otherwise, it will contain details about the error.
 * `message`: If we successfully communicated with the Open API, this will be
-"OK". Otherwise, it will contain a description of the error.
+  "OK". Otherwise, it will contain a description of the error.
 * `data`: The response from the Open API (only present if `"message": "OK"`).
-The exact structure of this value depends on the operation, and is detailed in
-section A.2.14 of the [Developer's Guide].
+  The exact structure of this value depends on the operation, and is detailed
+  in section A.2.14 of the [Developer's Guide].
 
 Note that `"message": "OK"` doesn't necessarily mean that the request
 successfully got useful data. If the HTTP server successfully makes the Open
@@ -143,8 +140,7 @@ in the [Developer's Guide].
 ```
 
 
-Reference Data Service (//blp/refdata)
-======================================
+### Reference Data Service (//blp/refdata)
 
 The Reference Data Service provides request/response access to market data. It
 supports several kinds of requests, each with its own request parameters and
@@ -155,8 +151,7 @@ that type, as well as the schemas for the request and response. All response
 elements that can occur for any of the types are detailed in section A.2.14.
 
 
-HistoricalData
---------------
+#### HistoricalData
 
 Use this request type to get end-of-day data about specific securities over a
 range of dates. This request must specify at least one security, at least one
@@ -170,8 +165,7 @@ Example request/response were used in the previous section when describing the
 HTTP API usage.
 
 
-ReferenceData
--------------
+#### ReferenceData
 
 Use this request type to get current data about specific securities. This
 request must specify at least one security and at least one field.
@@ -212,8 +206,7 @@ EOF
 ```
 
 
-API Field Service (//blp/apiflds)
-=================================
+### API Field Service (//blp/apiflds)
 
 There are more fields available than can be enumerated in this document.
 To search for and get information about fields using a Bloomberg Terminal,
@@ -225,8 +218,7 @@ e.g., if you don't know the name of the field that contains the last price).
 This service is detailed in sections 7.6 and A.3 of the [Developer's Guide].
 
 
-FieldInfo
----------
+#### FieldInfo
 
 Use this request type to get information about specific fields. This request
 must specify at least one field (using either the id or the mnemonic). To get
