@@ -1,11 +1,13 @@
 # HTTP API
 
-The [Bloomberg Open API] provides access to market data. The
-[Bloomberg HTTP API] makes the [Open API] available via HTTP: clients POST
-commands to a HTTP server, which will respond with the corresponding data.
+The [Bloomberg Open API] provides access to market data. The [Bloomberg HTTP
+API] makes the [Open API] available via HTTP and WebSockets.  Clients may
+access reference and historical request/response data as well as make
+subscriptions for live data.
 
-This document provides an overview of the [HTTP API]: the URLs to use and the
-formatting for the HTTP requests and responses. Bloomberg operates a server at
+This document provides an overview of the [HTTP API]: the URLs to use, the
+formatting for the HTTP request/response, and the formatting for WebSocket
+subscriptions.  Bloomberg operates a server at
 https://http-api.openbloomberg.com/ that runs an instance of this API for demo
 and other purposes (e.g., hackathons). All examples in this document, as well
 as elsewhere in this project, are written to work with this server (e.g., they
@@ -26,6 +28,17 @@ available in the future.
 [HTTP API]: http://github.com/bloomberg/blpapi-http
 [BLPAPI Developer's Guide]: http://www.bloomberglabs.com/files/2014/07/blpapi-developers-guide-2.54.pdf
 [Developer's Guide]: http://www.bloomberglabs.com/files/2014/07/blpapi-developers-guide-2.54.pdf
+
+## Table of Contents
+
+  * [Request/Response data](#requestresponse-data)
+    * [HTTP request headers](#http-request-headers)
+    * [HTTP response format](#http-response-format)
+    * [Reference Data Service](#reference-data-service-blprefdata)
+      * [HistoricalData](#historicaldata)
+      * [ReferenceData](#referencedata)
+    * [API Field Service](#api-field-service-blpapiflds)
+      * [FieldInfo](#fieldinfo)
 
 
 ## Request/Response data
