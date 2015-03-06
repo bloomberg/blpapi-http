@@ -446,7 +446,7 @@ export class Session extends events.EventEmitter {
                 return result;
             }
 
-            var subs = _.map(subscriptionsAndServices, makeSubscription);
+            var subs = _.map(subscriptionsAndServices, makeSubscription, this);
             this.session.subscribe(subs, identity);
         }).nodeify(cb);
     }
