@@ -43,16 +43,12 @@ class SocketBaseImpl extends emitterAdapter.SocketEventEmitterAdapter implements
         this.send('connected');
     }
 
-    notifySubscribed(): void {
-        this.send('subscribed');
+    notifySubscribed(correlationIds: number[]): void {
+        this.send('subscribed', correlationIds);
     }
 
-    notifyUnsubscribed(all: boolean = false): void {
-        var message = 'unsubscribed';
-        if (all) {
-            message += ' all';
-        }
-        this.send(message);
+    notifyUnsubscribed(correlationIds: number[]): void {
+        this.send('unsubscribed', correlationIds);
     }
 
     disconnect(): void {

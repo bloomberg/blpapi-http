@@ -20,7 +20,12 @@ export interface IBufferedData<T> {
 
 export interface IOurResponse extends restify.Response {
     sendChunk?: (data: any) => void;
-    sendEnd?: (status: any, message: string) => void;
+    sendOtherProp?: (properties: { [index: string]: any; }) => void;
+    sendEnd?: (status: number, message: string) => void;
+    sendWhole?: (status: number,
+                 message: string,
+                 properties?: { [index: string]: any; },
+                 data?: any) => void;
     sendError?: (err: Error) => any;
 }
 
@@ -33,8 +38,8 @@ export interface ISocket extends NodeJS.EventEmitter {
     sendData(correlationId: number, data: any): void;
     sendError(message: string): void;
     notifyConnected(): void;
-    notifySubscribed(): void;
-    notifyUnsubscribed(all: boolean): void;
+    notifySubscribed(correlationIds: number[]): void;
+    notifyUnsubscribed(correlationIds: number[]): void;
     disconnect(): void;
 
     // ACCESSORS

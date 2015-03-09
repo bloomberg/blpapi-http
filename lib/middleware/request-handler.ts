@@ -33,7 +33,19 @@ var AUTH_ACTION_MAP: ActionMap = {
     'authorize': onAuthorize
 };
 
+type Properties = {
+    [index: string]: any;
+}
+
 // PRIVATE FUNCTIONS
+function getSubscriptionsProp(subscriptions: Subscription[]): Properties {
+    var corrIds = subscriptions.map((s: Subscription): number => {
+        return s.correlationId;
+    });
+    var result: Properties = { 'correlationIds': corrIds };
+    return result;
+}
+
 function validatePollId(session: Session, newPollId: number): { isValid: boolean;
                                                                 fetchNewData?: boolean; }
 {
@@ -229,7 +241,7 @@ function onSubscribe(req: Interface.IOurRequest,
                     req.apiSession.activeSubscriptions.set(s.correlationId, s);
                 });
                 req.log.debug('Subscribed');
-                res.sendEnd(0, 'Subscribed');
+                res.sendWhole(0, 'Subscribed', getSubscriptionsProp(subscriptions));
             } else { // Unsubscribe if session already expires
                 req.blpSession.unsubscribe(subscriptions);
                 subscriptions.forEach((s: Subscription): void => {
@@ -310,7 +322,8 @@ function onUnsubscribe(req: Interface.IOurRequest,
         }
 
         res.sendChunk(result);
-        res.sendEnd(0, 'Unsubscribe Successfully');
+        res.sendOtherProp(getSubscriptionsProp(subscriptions));
+        res.sendEnd(0, 'Unsubscribed Successfully');
         return next();
     } catch (err) {
         req.log.error(err, 'Unsubscription error');
@@ -340,7 +353,7 @@ function onAuthorize(req: Interface.IOurRequest,
     req.blpSession.authorizeUser(req.body)
         .then((identity: blpapi.Identity): void => {
             auth.setIdentity(req, identity);
-            res.sendEnd(0, 'OK');
+            res.sendWhole(0, 'OK');
             return next();
         })
         .catch((err: Error): void => {
@@ -368,6 +381,7 @@ export function elevateRequest (req: Interface.IOurRequest,
                                 next: restify.Next): void
 {
     var chunkIndex: number = 0;
+    var otherProperties: Properties = {};
 
     /**
      * This is called each time data is added to the response.
@@ -401,17 +415,52 @@ export function elevateRequest (req: Interface.IOurRequest,
         return new restify.InternalError(err.message);
     }
 
+    function preparePropertiesText(properties: Properties): string {
+        return _.reduce(properties,
+                        (text: string, value: string, property: string): string => {
+                            return text + ',' + stringifyPair(property, value);
+                        },
+                        '' /* initial value */);
+    }
+
+    function prepareEndText(status: number,
+                            message: string,
+                            properties: Properties): string {
+        return util.format('%s%s,%s%s}',
+                           prepareResponseText(true),
+                           stringifyPair('status', status),
+                           stringifyPair('message', message || ''),
+                           properties ? preparePropertiesText(properties) : '');
+    }
+
     res.sendChunk = (data: any): void => {
         var text = prepareResponseText(false);
         res.write(text + JSON.stringify(data));
     };
 
-    res.sendEnd = (status: string, message: string): void => {
-        var text = util.format('%s%s,%s}',
-                               prepareResponseText(true),
-                               stringifyPair('status', status),
-                               stringifyPair('message', message || ''));
-        res.end(text);
+    res.sendOtherProp = (properties: Properties): void => {
+        // For now just cache the additional properties they will be
+        // bundled into the response in 'sendEnd'.
+        _.assign(otherProperties, properties);
+    };
+
+    res.sendEnd = (status: number, message: string): void => {
+        res.end(prepareEndText(status, message, otherProperties));
+    };
+
+    // Generate and send a full response.
+    res.sendWhole = (status: number,
+                     message: string,
+                     properties?: Properties,
+                     data?: any): void => {
+        // Make sure we don't interlace calls to this function with
+        // calls to functions generating only part of the response.
+        assert(chunkIndex === 0 && _.isEmpty(otherProperties));
+        var text = '';
+        if (data) {
+            text = prepareResponseText(/* isEnd */ false) + JSON.stringify(data);
+        }
+        res.end(text + prepareEndText(status, message, properties));
     };
 
     res.sendError = (err: Error): void|any => {

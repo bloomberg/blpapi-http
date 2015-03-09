@@ -358,6 +358,20 @@ describe('Subscription-socket-io', (): void => {
                         });
                     });
                 });
+
+                it('should receive correlation ids with subscribed event',
+                   (done: Function): void => {
+                    var subscriptions = [
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 2, fields: ['P'] }
+                    ];
+                    socket.emit('subscribe', subscriptions);
+                    socket.on('subscribed', (correlationIds: number[]): void => {
+                        correlationIds.sort().should.be.an.Array.and.eql([0, 1, 2]);
+                        done();
+                    });
+                });
             });
 
             describe('#unsubscribe', (): void => {
@@ -369,17 +383,17 @@ describe('Subscription-socket-io', (): void => {
                         done();
                     });
                 });
-                it('should unsubscribe all if body is umpty', (done: Function): void => {
-                    socket.emit('subscribe',
-                                [
-                                    { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                    { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                                ]
-                    );
+                it('should unsubscribe all if body is empty', (done: Function): void => {
+                    var subscriptions = [
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                    ];
+                    socket.emit('subscribe', subscriptions);
                     socket.on('subscribed', (): void => {
                         socket.emit('unsubscribe');
                     });
-                    socket.on('unsubscribed all', (): void => {
+                    socket.on('unsubscribed', (correlationIds: number[]): void => {
+                        correlationIds.sort().should.be.an.Array.and.eql([0, 1]);
                         done();
                     });
                 });
@@ -424,16 +438,16 @@ describe('Subscription-socket-io', (): void => {
                     });
                 });
                 it('should unsubscribe all if all correlationIds', (done: Function): void => {
-                    socket.emit('subscribe',
-                                [
-                                    { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                    { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                                ]
-                    );
+                    var subscriptions = [
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                    ];
+                    socket.emit('subscribe', subscriptions);
                     socket.on('subscribed', (): void => {
                         socket.emit('unsubscribe', { correlationIds: [0, 1] });
                     });
-                    socket.on('unsubscribed all', (): void => {
+                    socket.on('unsubscribed', (correlationIds: number[]): void => {
+                        correlationIds.should.be.an.Array.and.eql([0, 1]);
                         done();
                     });
                 });
@@ -484,10 +498,28 @@ describe('Subscription-socket-io', (): void => {
                             socket.emit('unsubscribe');
                         }
                     });
-                    socket.on('unsubscribed all', (): void => {
+                    socket.on('unsubscribed', (correlationIds: number[]): void => {
+                        correlationIds.should.be.an.Array.and.eql([0]);
                         socket.disconnect();
                     });
                     socket.on('disconnect', (): void => {
+                        done();
+                    });
+                });
+
+                it('should receive correlation ids with unsubscribed event',
+                   (done: Function): void => {
+                    var subscriptions = [
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 2, fields: ['P'] }
+                    ];
+                    socket.emit('subscribe', subscriptions);
+                    socket.on('subscribed', (): void => {
+                        socket.emit('unsubscribe');
+                    });
+                    socket.on('unsubscribed', (correlationIds: number[]): void => {
+                        correlationIds.sort().should.be.an.Array.and.eql([0, 1, 2]);
                         done();
                     });
                 });

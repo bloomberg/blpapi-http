@@ -39,19 +39,20 @@ if (cluster.isMaster) {
 
 function socketSubscription(clientId) {
     var counter = 0;
+    var unsubscribedCounter = 0;
+
     console.log('Client Id: ' + clientId + '. Start testing.');
 
     var socket = io.connect(url, opt);
-
+    var subscriptions = [
+        { security: 'AAPL US Equity', correlationId: 0, fields: ['LAST_PRICE'] }
+        //{ security: 'GOOG US Equity', correlationId: 1, fields: ['LAST_PRICE'] }
+    ];
+    
     socket.on('connected', function () {
         counter = 0;
         console.log('Connected' + '. Client Id: ' + clientId);
-        socket.emit('subscribe',
-                    [
-                        { security: 'AAPL US Equity', correlationId: 0, fields: ['LAST_PRICE'] }
-                        //{ security: 'GOOG US Equity', correlationId: 1, fields: ['LAST_PRICE'] }
-                    ]
-        );
+        socket.emit('subscribe', subscriptions);
     });
 
     socket.on('data', function (data) {
@@ -69,18 +70,19 @@ function socketSubscription(clientId) {
         console.log(data);
     });
 
-    socket.on('subscribed', function () {
-        console.log('Subscribed' + '. Client Id: ' + clientId);
+    socket.on('subscribed', function (correlationIds) {
+        console.log('Subscribed' + '. Client Id: ' + clientId +
+                    '. Correlation Ids: ' + correlationIds);
     });
 
-    socket.on('unsubscribed', function () {
-        console.log('Unsubscribed' + '. Client Id: ' + clientId);
-    });
-
-    socket.on('unsubscribed all', function () {
-        console.log('Unsubscribed all' + '. Client Id: ' + clientId);
-        socket.disconnect();
-        process.exit();
+    socket.on('unsubscribed', function (correlationIds) {
+        console.log('Unsubscribed' + '. Client Id: ' + clientId +
+                    '. Correlation Ids: ' + correlationIds);
+        unsubscribedCounter += correlationIds.length;
+        if (unsubscribedCounter === subscriptions.length) {
+            socket.disconnect();
+            process.exit();
+        }
     });
 
     socket.on('disconnect', function() {
