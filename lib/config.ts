@@ -84,7 +84,7 @@ export var emitter = new events.EventEmitter();
             'crl': {
                 doc: 'HTTPS server certificate revocation list',
                 format: String,
-                default: '../keys/hackathon-crl.pem',
+                default: '',
                 arg: 'https-crl'
             }
         },
@@ -276,7 +276,6 @@ export var emitter = new events.EventEmitter();
         acceptable: ['application/json']
     };
     if (convictConf.get('https.enable')) {
-        var crlPath = path.resolve(__dirname, convictConf.get('https.crl'));
         otherConf['serverOptions'].httpsServerOptions = {
             key: fs.readFileSync(path.resolve(__dirname,
                                               convictConf.get('https.key'))),
@@ -284,17 +283,21 @@ export var emitter = new events.EventEmitter();
                                                convictConf.get('https.cert'))),
             ca: fs.readFileSync(path.resolve(__dirname,
                                              convictConf.get('https.ca'))),
-            crl: fs.readFileSync(crlPath),
             requestCert: true,
             rejectUnauthorized: true
         };
 
-        // Setup file watch for crl changes
-        fs.watch(crlPath, (event: string, filename: string): void => {
-            // Re-read the crl file
+        // For server that wants to use CRL
+        if (convictConf.get('https.crl')) {
+            var crlPath = path.resolve(__dirname, convictConf.get('https.crl'));
             otherConf['serverOptions'].httpsServerOptions.crl = fs.readFileSync(crlPath);
-            emitter.emit('change', 'https.crl');  // Signal the server that config changes
-        });
+            // Setup file watch for crl changes
+            fs.watch(crlPath, (event: string, filename: string): void => {
+                // Re-read the crl file
+                otherConf['serverOptions'].httpsServerOptions.crl = fs.readFileSync(crlPath);
+                emitter.emit('change', 'https.crl');  // Signal the server that config changes
+            });
+        }
     }
 
     // BLPAPI Session options
