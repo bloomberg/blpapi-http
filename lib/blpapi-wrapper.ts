@@ -277,6 +277,8 @@ export class Session extends events.EventEmitter {
             if (isAuthRequest) {
                 this.session.authorizeUser(request, correlatorId);
             } else {
+                // TODO: blpapi-node doesn't accept null; remove this when that's fixed.
+                identity = identity || undefined;
                 this.session.request(uri, requestName, request, correlatorId, identity);
             }
             assert(requestName in REQUEST_TO_RESPONSE_MAP,
@@ -447,6 +449,8 @@ export class Session extends events.EventEmitter {
             }
 
             var subs = _.map(subscriptionsAndServices, makeSubscription, this);
+            // TODO: blpapi-node doesn't accept null; remove this when that's fixed.
+            identity = identity || undefined;
             this.session.subscribe(subs, identity);
         }).nodeify(cb);
     }
