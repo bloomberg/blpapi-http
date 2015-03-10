@@ -24,9 +24,27 @@ declare module "blpapi" {
 
     }
 
-    import EventEmitter = NodeJS.EventEmitter;
+    import events = require('events');
 
-    export class Session implements EventEmitter {
+    export interface ISession extends NodeJS.EventEmitter {
+        start(): Session;
+        authorize(uri: string, cid: number): number;
+        authorizeUser(request: any, cid: number): number;
+        stop(): Session;
+        destroy(): Session;
+        openService(uri: string, cid: number): number;
+        subscribe(subs: Subscription[], identity?: Identity, label?: string): Session;
+        resubscribe(subs: Subscription[], label?: string): Session;
+        unsubscribe(subs: Subscription[]): Session;
+        request(uri: string,
+                name: string,
+                request: any,
+                cid: number,
+                identity?: Identity,
+                label?: string): number;
+    }
+
+    export class Session extends events.EventEmitter implements ISession {
         constructor (args: SessionOpts);
         start(): Session;
         authorize(uri: string, cid: number): number;
@@ -43,14 +61,5 @@ declare module "blpapi" {
                 cid: number,
                 identity?: Identity,
                 label?: string): number;
-
-        addListener(event: string, listener: Function): EventEmitter;
-        on(event: string, listener: Function): EventEmitter;
-        once(event: string, listener: Function): EventEmitter;
-        removeListener(event: string, listener: Function): EventEmitter;
-        removeAllListeners(event?: string): EventEmitter;
-        setMaxListeners(n: number): void;
-        listeners(event: string): Function[];
-        emit(event: string, ...args: any[]): boolean;
     }
 }
