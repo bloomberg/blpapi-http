@@ -48,7 +48,7 @@ class SocketBaseImpl extends emitterAdapter.SocketEventEmitterAdapter implements
     }
 
     notifyUnsubscribed(all: boolean = false): void {
-        var message = 'unsubscribe';
+        var message = 'unsubscribed';
         if (all) {
             message += ' all';
         }

@@ -80,17 +80,18 @@ function setup(socket: Interface.ISocket): void
         }
 
         // Validate input options
+        var isValid = true;
         var subscriptions: Subscription[] = [];
-        if (!data.length) {
+        if (!data || !data.length) {
             var message = 'No valid subscriptions found.';
             socket.log.debug(message);
             socket.sendError(message);
             return;
         }
-        data.forEach((s: {'correlationId': number;
+        _.forEach(data, (s: {'correlationId': number;
                           'security': string;
                           'fields': string[];
-                          'options'?: any }): void => {
+                          'options'?: any }): boolean => {
             // Check if all requests are valid
             // The Subscribe request will proceed only if all subscriptions are valid
             if (!_.has(s, 'correlationId') ||
@@ -103,14 +104,16 @@ function setup(socket: Interface.ISocket): void
                 var message = 'Invalid subscription option.';
                 socket.log.debug(message);
                 socket.sendError(message);
-                return;
+                isValid = false;
+                return false;
             }
 
             if (receivedSubscriptions.has(s.correlationId)) {
                 message = 'Correlation id ' + s.correlationId + ' already exists.';
                 socket.log.debug(message);
                 socket.sendError(message);
-                return;
+                isValid = false;
+                return false;
             }
 
             var sub = new Subscription(s.correlationId,
@@ -143,6 +146,9 @@ function setup(socket: Interface.ISocket): void
                 receivedSubscriptions.delete(sub.correlationId);
             });
         });
+        if (!isValid) {
+            return;
+        }
 
         // Subscribe user request through blpapi-wrapper
         // TODO: Support authorized identity.
