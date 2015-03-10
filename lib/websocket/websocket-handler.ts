@@ -146,7 +146,7 @@ function setup(socket: Interface.ISocket): void
 
         // Subscribe user request through blpapi-wrapper
         // TODO: Support authorized identity.
-        socket.blpSession.subscribe(subscriptions, null)
+        socket.blpSession.subscribe(subscriptions, undefined)
             .then((): void => {
                 if (socket.isConnected()) {
                     subscriptions.forEach((s: Subscription): void => {
