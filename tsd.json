@@ -49,6 +49,18 @@
     },
     "express/express.d.ts": {
       "commit": "49b821f06b711a86be349c4bbff4351467c024b9"
+    },
+    "request/request.d.ts": {
+      "commit": "49b821f06b711a86be349c4bbff4351467c024b9"
+    },
+    "form-data/form-data.d.ts": {
+      "commit": "49b821f06b711a86be349c4bbff4351467c024b9"
+    },
+    "mockery/mockery.d.ts": {
+      "commit": "49b821f06b711a86be349c4bbff4351467c024b9"
+    },
+    "socket.io-client/socket.io-client.d.ts": {
+      "commit": "a7a25e72d9d176ccdd6445417d3449ffff49111f"
     }
   }
 }
