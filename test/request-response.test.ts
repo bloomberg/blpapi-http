@@ -1,6 +1,5 @@
 /// <reference path='../typings/tsd.d.ts' />
 
-import child = require('child_process');
 import util = require('util');
 import Promise = require('bluebird');
 import _ = require('lodash');
@@ -12,7 +11,6 @@ should(true).ok;    // Added so ts won't get rid of should module
 var HOST = 'http://localhost:3000';
 
 describe('Request/Response', (): void => {
-    var server: child.ChildProcess;
     var ipc: TestHelper.IOurSocket;
 
     // Create test server
@@ -20,19 +18,15 @@ describe('Request/Response', (): void => {
     before(function(done: Function): void {
         this.timeout(0);    // Turn off timeout for before all hook
         TestHelper.startServer()
-            .then((r: {
-                        server: child.ChildProcess;
-                        ipc: TestHelper.IOurSocket;
-                  }): void => {
-                server = r.server;
-                ipc = r.ipc;
+            .then((s: TestHelper.IOurSocket): void => {
+                ipc = s;
                 done();
             });
     });
 
     // Shut-down server
-    after((): void => {
-        server.kill();
+    after((): Promise<any> => {
+        return TestHelper.stopServer();
     });
 
     describe('blpSession cannot be started', (): void => {
@@ -107,7 +101,7 @@ describe('Request/Response', (): void => {
                 ipc.off('wait-to-openService');
             });
 
-            describe('request data arrives in 1 trunk', (): void => {
+            describe('request data arrives in 1 chunk', (): void => {
                 beforeEach((): void => {
                     ipc.once('wait-to-request', (data: any): void => {
                         ipc.emit(util.format('request-%d-final', data.cid));
@@ -240,7 +234,7 @@ describe('Request/Response', (): void => {
                 });
             });
 
-            describe('request data arrives in 3 trunk', (): void => {
+            describe('request data arrives in 3 chunk', (): void => {
                 beforeEach((): void => {
                     ipc.once('wait-to-request', (data: any): void => {
                         ipc.emit(util.format('request-%d-partial', data.cid));
@@ -269,7 +263,7 @@ describe('Request/Response', (): void => {
                 });
             });
 
-            describe('request data arrives in 1 trunk then hang', (): void => {
+            describe('request data arrives in 1 chunk then hang', (): void => {
                 var cids: number[] = [];
                 beforeEach((): void => {
                     ipc.once('wait-to-request', (data: any): void => {
@@ -403,7 +397,7 @@ describe('Request/Response', (): void => {
                 });
             });
 
-            describe('request data arrives in 1 trunk then session ternimated', (): void => {
+            describe('request data arrives in 1 chunk then session ternimated', (): void => {
                 beforeEach((): void => {
                     ipc.once('wait-to-request', (data: any): void => {
                         ipc.emit(util.format('request-%d-partial', data.cid));

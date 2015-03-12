@@ -1,6 +1,5 @@
 /// <reference path='../typings/tsd.d.ts' />
 
-import child = require('child_process');
 import util = require('util');
 import Promise = require('bluebird');
 import _ = require('lodash');
@@ -16,7 +15,6 @@ var opt = {
 };
 
 describe('Subscription-socket-io', (): void => {
-    var server: child.ChildProcess;
     var ipc: TestHelper.IOurSocket;
     var socket: SocketIOClient.Socket;
 
@@ -25,19 +23,15 @@ describe('Subscription-socket-io', (): void => {
     before(function(done: Function): void {
         this.timeout(0);    // Turn off timeout for before all hook
         TestHelper.startServer()
-            .then((r: {
-                        server: child.ChildProcess;
-                        ipc: TestHelper.IOurSocket;
-                  }): void => {
-                server = r.server;
-                ipc = r.ipc;
+            .then((s: TestHelper.IOurSocket): void => {
+                ipc = s;
                 done();
             });
     });
 
     // Shut-down server
-    after((): void => {
-        server.kill();
+    after((): Promise<any> => {
+        return TestHelper.stopServer();
     });
 
     // Connect to the server for every test cases
@@ -124,7 +118,7 @@ describe('Subscription-socket-io', (): void => {
                 );
                 socket.on('err', (err: Error): void => {
                     err.message.should.be.a.String
-                        .and.equal('Correlation id 0 already exists.');
+                        .and.equal('Duplicate correlation Id received.');
                     done();
                 });
             });

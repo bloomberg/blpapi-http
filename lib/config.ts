@@ -69,7 +69,8 @@ export var emitter = new events.EventEmitter();
         'expiration': {
             doc: 'Auto-expiration period of blpSession in seconds',
             format: 'integer',
-            default: 5
+            default: 5,
+            arg: 'session-expiration'
         },
         'https': {
             'enable': {

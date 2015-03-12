@@ -23,6 +23,14 @@ type ActionMap = {
                       next: restify.Next) => any;
 };
 
+// Type used for subscription input from request body
+type SubscriptionOption = {
+    correlationId: number;
+    security: string;
+    fields: string[];
+    options?: any;
+}
+
 var SUBSCRIPTION_ACTION_MAP: ActionMap = {
     'start': onSubscribe,
     'stop':  onUnsubscribe
@@ -90,17 +98,15 @@ function validatePollId(session: Session, newPollId: number): { isValid: boolean
     }
 }
 
-function startAllNewBuffers(subscriptionStore: Map<Subscription>): Object[]
+function startAllNewBuffers(subscriptions: Subscription[]): Object[]
 {
     var buffers: Object[] = [];
     // Check if we have new data for any subscriptions
-    var hasNewData: boolean = false;
-    subscriptionStore.forEach((sub: Subscription): boolean => {
-        hasNewData = !sub.buffer.isEmpty();
-        return sub.buffer.isEmpty();
+    var hasNewData: boolean = _.some(subscriptions, (sub: Subscription): boolean => {
+        return !sub.buffer.isEmpty();
     });
     if (hasNewData) { // Start a new buffer for every subscription and return back the new data
-        subscriptionStore.forEach((sub: Subscription): boolean => {
+        subscriptions.forEach((sub: Subscription): void => {
             var buff: Interface.IBufferedData<Object> = sub.buffer.startNewBuffer();
             if (buff.buffer.length) {
                 buffers.push({
@@ -109,7 +115,6 @@ function startAllNewBuffers(subscriptionStore: Map<Subscription>): Object[]
                     'missed_ticks': buff.overflow
                 });
             }
-            return true;
         });
     }
     return buffers;
@@ -175,66 +180,72 @@ function onSubscribe(req: Interface.IOurRequest,
                      res: Interface.IOurResponse,
                      next: restify.Next): void
 {
-    var subscriptions: Subscription[] = [];
-    ((): Promise<void> => {
-        // Check if req body is valid
-        if (!_.isArray(req.body) ||
-            !req.body.length) {
-            throw new Error('Invalid subscription request body.');
+    // Validate input options
+    if (!_.isArray(req.body) || !req.body.length) {
+        return next(new restify.BadRequestError('Invalid subscription request body.'));
+    }
+    var errMessage: string;
+    var isValid: boolean = _.every(req.body, (s: SubscriptionOption): boolean => {
+        if (!_.has(s, 'correlationId') ||
+            !_.isNumber(s.correlationId) ||
+            !_.has(s, 'security') ||
+            !_.isString(s.security) ||
+            !_.has(s, 'fields') ||
+            !_.isArray(s.fields))
+        {
+            errMessage = 'Invalid subscription option.';
+            return false;
         }
+        if (req.apiSession.receivedSubscriptions.has(s.correlationId)) {
+            errMessage = util.format('Correlation Id %d already exist.', s.correlationId);
+            return false;
+        }
+        return true;
+    });
+    if (!isValid) {
+        req.log.debug(errMessage);
+        return next(new restify.BadRequestError(errMessage));
+    }
+    if (req.body.length !== _(req.body).pluck('correlationId').uniq().value().length) {
+        errMessage = 'Duplicate correlation Id received.';
+        req.log.debug(errMessage);
+        return next(new restify.BadRequestError(errMessage));
+    }
 
-        req.body.forEach((s: {'correlationId': number;
-                              'security': string;
-                              'fields': string[];
-                              'options'?: any }): void => {
-            // Check if all requests are valid
-            // The Subscribe request will proceed only if all subscriptions are valid
-            if (!_.has(s, 'correlationId') ||
-                !_.isNumber(s.correlationId) ||
-                !_.has(s, 'security') ||
-                !_.isString(s.security) ||
-                !_.has(s, 'fields') ||
-                !_.isArray(s.fields)) {
-                req.log.debug('Invalid subscription option.');
-                throw new Error('Invalid subscription option.');
-            }
-            if (req.apiSession.receivedSubscriptions.has(s.correlationId)) {
-                req.log.debug('Correlation Id ' + s.correlationId + ' already exist.');
-                throw new Error('Correlation Id ' + s.correlationId + ' already exist.');
-            }
+    // Create Subscription object array and add event listeners
+    var subscriptions: Subscription[] = _.map(req.body, (s: SubscriptionOption): Subscription => {
+        var sub = new Subscription(s.correlationId,
+                                   s.security,
+                                   s.fields,
+                                   s.options,
+                                   conf.get('longpoll.maxbuffersize'));
 
-            var sub = new Subscription(s.correlationId,
-                                       s.security,
-                                       s.fields,
-                                       s.options,
-                                       conf.get('longpoll.maxbuffersize'));
-            subscriptions.push(sub);
-            req.apiSession.receivedSubscriptions.set(sub.correlationId, sub);
+        // Add event listener for each subscription
+        sub.on('data', (data: any): void => {
+            req.log.debug({data: {cid: sub.correlationId, time: process.hrtime()}},
+                          'Data received');
 
-            // Add event listener for each subscription
-            sub.on('data', (data: any): void => {
-                req.log.debug({data: {cid: sub.correlationId, time: process.hrtime()}},
-                              'Data received');
-
-                // Buffer the current data
-                sub.buffer.pushValue(data);
-            });
-
-            // Must subscribe to the 'error' event; otherwise EventEmitter will throw an exception
-            // that was occurring from the underlying blpapi.Session.  It is the assumed that the
-            // blpapi.Session properly cleans up the subscription (i.e., 'unsubscribe()' should not
-            // be called).
-            sub.on('error', (err: Error): void => {
-                req.log.error(err, 'blpapi.Session subscription error occurred.');
-                sub.removeAllListeners();
-                req.apiSession.activeSubscriptions.delete(sub.correlationId);
-                req.apiSession.receivedSubscriptions.delete(sub.correlationId);
-            });
+            // Buffer the current data
+            sub.buffer.pushValue(data);
         });
 
-        // Subscribe user request through blpapi-wrapper
-        return req.blpSession.subscribe(subscriptions, req.identity);
-    })()
+        // Must subscribe to the 'error' event; otherwise EventEmitter will throw an exception
+        // that was occurring from the underlying blpapi.Session.  It is the assumed that the
+        // blpapi.Session properly cleans up the subscription (i.e., 'unsubscribe()' should not
+        // be called).
+        sub.on('error', (err: Error): void => {
+            req.log.error(err, 'blpapi.Session subscription error occurred.');
+            sub.removeAllListeners();
+            req.apiSession.activeSubscriptions.delete(sub.correlationId);
+            req.apiSession.receivedSubscriptions.delete(sub.correlationId);
+        });
+
+        req.apiSession.receivedSubscriptions.set(sub.correlationId, sub);
+        return sub;
+    });
+
+    // Subscribe user request through blpapi-wrapper
+    req.blpSession.subscribe(subscriptions, req.identity)
         .then((): void => {
             if (!req.apiSession.expired) {
                 subscriptions.forEach((s: Subscription): void => {
@@ -286,29 +297,27 @@ function onUnsubscribe(req: Interface.IOurRequest,
         }
         // Next, validate all correlation Ids
         // Will error if any invalid correlation Id received
-        var isAllValid = true;
-        _.uniq(req.body.correlationIds).forEach((cid: number): boolean => {
+        var errMessage: string;
+        var isAllValid = _.every(_.uniq(req.body.correlationIds), (cid: number): boolean => {
             if (req.apiSession.activeSubscriptions.has(cid)) {
                 subscriptions.push(req.apiSession.activeSubscriptions.get(cid));
-            } else {
-                isAllValid = false;
-                req.log.debug('Invalid correlation Id ' + cid + ' received.');
-                return false;
+                return true;
             }
+
+            errMessage = util.format('Invalid correlation Id %d received.', cid);
+            return false;
         });
         if (!isAllValid) {
-            return next(new restify.InvalidArgumentError('Invalid correlation id.'));
+            req.log.debug(errMessage);
+            return next(new restify.InvalidArgumentError(errMessage));
         }
     }
 
     try {
-        var result: Object[] = [];
         req.blpSession.unsubscribe(subscriptions);
+        var result: Object[] = startAllNewBuffers(subscriptions);
         subscriptions.forEach((sub: Subscription): void => {
             sub.removeAllListeners();
-            if (!sub.buffer.isEmpty()) {
-                result.push(sub.buffer.startNewBuffer());
-            }
             req.apiSession.activeSubscriptions.delete(sub.correlationId);
             req.apiSession.receivedSubscriptions.delete(sub.correlationId);
         });
@@ -513,7 +522,7 @@ export function onPollSubscriptions(req: Interface.IOurRequest,
         // For fetching new data
         p = ((): Promise<Object[]> => {
                 req.log.debug('Long polling...');
-                var buff: Object[] = startAllNewBuffers(req.apiSession.activeSubscriptions);
+                var buff = startAllNewBuffers(req.apiSession.activeSubscriptions.values());
                 if (buff.length) {
                     req.apiSession.lastSuccessPollId = pollId;
                     req.log.debug('Got data. Sent back.');
@@ -528,7 +537,9 @@ export function onPollSubscriptions(req: Interface.IOurRequest,
                                 clearInterval(interval);
                                 reject(new Error('No active subscriptions'));
                             }
-                            var buffer = startAllNewBuffers(req.apiSession.activeSubscriptions);
+                            var buffer = startAllNewBuffers(
+                                req.apiSession.activeSubscriptions.values()
+                            );
                             if (buffer.length) {
                                 clearInterval(interval);
                                 req.apiSession.lastSuccessPollId = pollId;

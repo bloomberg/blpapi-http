@@ -295,6 +295,7 @@ export class Session extends events.EventEmitter {
         this.session.once('SessionTerminated', this.sessionTerminatedHandler.bind(this));
         log('Session created');
         trace(opts);
+        this.setMaxListeners(0);  // Remove max listener limit
     }
 
     // MANIPULATORS
@@ -503,7 +504,14 @@ export class Session extends events.EventEmitter {
                 this.subscriptions[cid].emit('end');
                 delete this.subscriptions[cid];
             });
-            this.unlisten('MarketDataEvents', cid);
+            // unlisten for events
+            var service = securityToService(this.subscriptions[cid].security);
+            assert(service in SERVICE_TO_SUBSCRIPTION_EVENTS_MAP,
+                   util.format('Service, %s, not handled', service));
+            var events = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[service];
+            _.forEach(events, (e: string): void => {
+                this.unlisten(e, cid);
+            });
         });
     }
 }
