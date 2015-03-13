@@ -31,6 +31,12 @@ export function wsOnConnect(s: webSocket): void
 }
 
 // PRIVATE FUNCTIONS
+function getCorrelationIds(subscriptions: Subscription[]): number[] {
+    return subscriptions.map((s: Subscription): number => {
+        return s.correlationId;
+    });
+}
+
 function onConnect(socket: Interface.ISocket): void
 {
     initialize(socket)
@@ -159,7 +165,7 @@ function setup(socket: Interface.ISocket): void
                         activeSubscriptions.set(s.correlationId, s);
                     });
                     socket.log.debug('Subscribed');
-                    socket.notifySubscribed();
+                    socket.notifySubscribed(getCorrelationIds(subscriptions));
                 } else { // Unsubscribe if socket already closed
                     try {
                         socket.blpSession.unsubscribe(subscriptions);
@@ -247,7 +253,7 @@ function setup(socket: Interface.ISocket): void
             activeSubscriptions.delete(s.correlationId);
             receivedSubscriptions.delete(s.correlationId);
         });
-        socket.notifyUnsubscribed(0 === receivedSubscriptions.size);
+        socket.notifyUnsubscribed(getCorrelationIds(subscriptions));
         socket.log.debug({activeSubscriptions: activeSubscriptions.size}, 'Unsubscribed.');
     });
 

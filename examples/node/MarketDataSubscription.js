@@ -12,25 +12,26 @@ var opt = {
     key: fs.readFileSync('client.key'),
     ca: fs.readFileSync('bloomberg.crt')
 };
-var NUM = Infinity; // Number of subscription data received before unsubscribe
+var NUM = 2; // Number of subscription data received before unsubscribe
 var counter = 0;
+var unsubscribedCounter = 0;
 
 var socket = io.connect(url, opt);
+
+var subscriptions = [
+    { security: 'AAPL US Equity', correlationId: 0, fields: ['LAST_PRICE'] },
+    { security: 'GOOG US Equity', correlationId: 1, fields: ['LAST_PRICE'] }
+];
 
 socket.on('connected', function () {
     counter = 0;
     console.log('Connected');
-    socket.emit('subscribe',
-                [
-                    { security: 'AAPL US Equity', correlationId: 0, fields: ['LAST_PRICE'] },
-                    { security: 'GOOG US Equity', correlationId: 1, fields: ['LAST_PRICE'] }
-                ]
-    );
+    socket.emit('subscribe', subscriptions);
 });
 
 socket.on('data', function (data) {
     console.log('Data Count: ' + counter++);
-    console.log(data);  
+    console.log(data);
     if (counter === NUM) {
         socket.emit('unsubscribe');
         // Unsubscribe only partial subscription
@@ -42,18 +43,19 @@ socket.on('err', function (data) {
     console.log(data);
 });
 
-socket.on('subscribed', function () {
+socket.on('subscribed', function (correlationIds) {
     console.log('Subscribed');
+    console.log('Correlation Ids: ' + correlationIds);
 });
 
-socket.on('unsubscribed', function () {
+socket.on('unsubscribed', function (correlationIds) {
     console.log('Unsubscribed');
-});
-
-socket.on('unsubscribed all', function () {
-    console.log('Unsubscribed all');
-    socket.disconnect();
-    process.exit();
+    console.log('Correlation Ids: ' + correlationIds);
+    unsubscribedCounter += correlationIds.length;
+    if (unsubscribedCounter === subscriptions.length) {
+        socket.disconnect();
+        process.exit();
+    }
 });
 
 socket.on('disconnect', function() {
