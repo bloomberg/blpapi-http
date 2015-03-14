@@ -33,5 +33,5 @@ TrustManager. Password protected: `secure2`.
 ## Run
 
 ```
-$ java ReferenceData ../json/ReferenceData/IBMHolders.json 
+$ java ReferenceData ../json/ReferenceData/IBMHolders.json
 ```
