@@ -21,11 +21,6 @@ var unsubscribe_count = 0;
 function dispatch(socket, msg) {
     var msg = JSON.parse(msg);
     switch (msg.type) {
-      case 'connected': {
-        // XXX: This case should be removed once #123 is closed.
-        console.log('Connected');
-        socket.send(serialize('subscribe', SUBSCRIPTIONS));
-      } break;
       case 'data': {
         console.log(msg.data);
         if (++data_events_count == N_DATA_EVENTS) {
@@ -67,6 +62,10 @@ var opt = {
 };
 
 var socket = new WebSocket(url, opt);
+socket.on('open', function() {
+    console.log('Connection opened');
+    socket.send(serialize('subscribe', SUBSCRIPTIONS));
+});
 socket.on('message', dispatch.bind(null, socket));
 socket.on('close', function() {
     console.log('Socket disconected');
