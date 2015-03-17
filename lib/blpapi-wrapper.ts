@@ -113,7 +113,7 @@ function isObjectEmpty(obj: Object): boolean {
     return (0 === Object.getOwnPropertyNames(obj).length);
 }
 
-function getServiceForSecurity(security: string): string {
+function securityToService(security: string): string {
     var serviceRegex = /^\/\/blp\/[a-z]+/;
     var match = serviceRegex.exec(security);
     // XXX: note that we shoud probably capture what the default service is to use when
@@ -122,15 +122,10 @@ function getServiceForSecurity(security: string): string {
     return match ? match[0] : '//blp/mktdata';
 }
 
-type SubscriptionAndService = {
-    subscription: Subscription;
-    serviceUri: string;
-}
-
-function getUniqueServices(sass: SubscriptionAndService[]): string[] {
-    return _(sass).map((subscriptionAndService: SubscriptionAndService): string => {
-        return subscriptionAndService.serviceUri;
-    }).uniq().valueOf();
+function subscriptionsToServices(subscriptions: Subscription[]): string[] {
+    return _.chain(subscriptions).map((s: Subscription): string => {
+        return securityToService(s.security);
+    }).uniq().value();
 }
 
 export class Session extends events.EventEmitter {
@@ -392,9 +387,7 @@ export class Session extends events.EventEmitter {
     {
         this.validateSession();
 
-        var subscriptionsAndServices = _.forEach(subscriptions, (s: Subscription,
-                                                                 i: number): void =>
-        {
+        _.forEach(subscriptions, (s: Subscription, i: number): void => {
             // XXX: O(N) - not critical but note to use ES6 Map in the future
             var cid = _.findKey(this.subscriptions, (other: Subscription): boolean => {
                 return s === other;
@@ -403,55 +396,60 @@ export class Session extends events.EventEmitter {
             if (undefined !== cid) {
                 throw new Error('Subscription already exists for index ' + i);
             }
-
-        }).map((s: Subscription): SubscriptionAndService => {
-            return {
-                subscription: s,
-                serviceUri: getServiceForSecurity(s.security)
-            };
         });
 
-        return Promise.all(_.map(getUniqueServices(subscriptionsAndServices),
+        var subs = _.map(subscriptions, (s: Subscription): blpapi.Subscription => {
+            var cid = this.nextCorrelatorId();
+
+            // XXX: yes, this is a side-effect of map, but it is needed for performance
+            //      reasons until ES6 Map is available
+            this.subscriptions[cid] = s;
+
+            var result: blpapi.Subscription = {
+                security: s.security,
+                correlation: cid,
+                fields: s.fields
+            };
+
+            if ('options' in s) {
+                result.options = s.options;
+            }
+
+            return result;
+        });
+
+        return Promise.all(_.map(subscriptionsToServices(subscriptions),
                                  (uri: string): Promise<void> =>
         {
             return this.openService(uri);
         })).then((): void => {
             log('Subscribing to: ' + JSON.stringify(subscriptions));
 
-            function makeSubscription(sas: SubscriptionAndService): blpapi.Subscription {
-                var cid = this.nextCorrelatorId();
-                var s = sas.subscription;
-                var serviceUri = sas.serviceUri;
-                // XXX: yes, this is a side-effect of map, but it is needed for performance
-                //      reasons until ES6 Map is available
-                this.subscriptions[cid] = s;
-
-                assert(serviceUri in SERVICE_TO_SUBSCRIPTION_EVENTS_MAP,
-                       util.format('Service, %s, not handled', serviceUri));
-                var events = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri];
-                events.forEach((event: string): void => {
-                    log('listening on event: ' + event + ' for cid: ' + cid);
-                    this.listen(event, cid, (m: any): void => {
-                        s.emit('data', m.data, s);
-                    });
-                });
-
-                var result: blpapi.Subscription = {
-                    security: s.security,
-                    correlation: cid,
-                    fields: s.fields
-                };
-
-                if ('options' in s) {
-                    result.options = s.options;
-                }
-                return result;
-            }
-
-            var subs = _.map(subscriptionsAndServices, makeSubscription, this);
             // TODO: blpapi-node doesn't accept null; remove this when that's fixed.
             identity = identity || undefined;
             this.session.subscribe(subs, identity);
+
+            _.forEach(subs, (s: blpapi.Subscription): void => {
+                var uri = securityToService(s.security);
+                var cid = s.correlation;
+                var userSubscription = this.subscriptions[cid];
+
+                assert(uri in SERVICE_TO_SUBSCRIPTION_EVENTS_MAP,
+                       util.format('Service, %s, not handled', uri));
+                var events = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[uri];
+                events.forEach((event: string): void => {
+                    log('listening on event: ' + event + ' for cid: ' + cid);
+                    this.listen(event, cid, (m: any): void => {
+                        userSubscription.emit('data', m.data, s);
+                    });
+                });
+            });
+        }).catch((ex: Error): void => {
+            _.forEach(subs, (s: blpapi.Subscription): void => {
+                var cid = s.correlation;
+                delete this.subscriptions[cid];
+            });
+            throw ex;
         }).nodeify(cb);
     }
 
