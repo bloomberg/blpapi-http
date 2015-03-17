@@ -1,11 +1,13 @@
 # HTTP API
 
-The [Bloomberg Open API] provides access to market data. The
-[Bloomberg HTTP API] makes the [Open API] available via HTTP: clients POST
-commands to a HTTP server, which will respond with the corresponding data.
+The [Bloomberg Open API] provides access to market data. The [Bloomberg HTTP
+API] makes the [Open API] available via HTTP and WebSockets.  Clients may
+access reference and historical request/response data as well as make
+subscriptions for live data.
 
-This document provides an overview of the [HTTP API]: the URLs to use and the
-formatting for the HTTP requests and responses. Bloomberg operates a server at
+This document provides an overview of the [HTTP API]: the URLs to use, the
+formatting for the HTTP request/response, and the formatting for WebSocket
+subscriptions.  Bloomberg operates a server at
 https://http-api.openbloomberg.com/ that runs an instance of this API for demo
 and other purposes (e.g., hackathons). All examples in this document, as well
 as elsewhere in this project, are written to work with this server (e.g., they
@@ -26,6 +28,25 @@ available in the future.
 [HTTP API]: http://github.com/bloomberg/blpapi-http
 [BLPAPI Developer's Guide]: http://www.bloomberglabs.com/files/2014/07/blpapi-developers-guide-2.54.pdf
 [Developer's Guide]: http://www.bloomberglabs.com/files/2014/07/blpapi-developers-guide-2.54.pdf
+
+## Table of Contents
+
+  * [Request/Response data](#requestresponse-data)
+    * [HTTP request headers](#http-request-headers)
+    * [HTTP response format](#http-response-format)
+    * [Reference Data Service](#reference-data-service-blprefdata)
+      * [HistoricalData](#historicaldata)
+      * [ReferenceData](#referencedata)
+    * [API Field Service](#api-field-service-blpapiflds)
+      * [FieldInfo](#fieldinfo)
+  * [Subscription data](#subscription-data)
+    * [WebSocket and SocketIO message types](#websocket-and-socketio-message-types)
+      * [Client to Server](#client-to-server)
+      * [Server to Client](#server-to-client)
+    * [Long-Polling API details](#long-polling-api-details)
+    * [Subscriptions over WebSockets](#subscriptions-over-websockets)
+    * [Subscriptions over SocketIO](#subscriptions-over-socketio)
+    * [Subscriptions over Long-Polling](#subscriptions-over-long-polling)
 
 
 ## Request/Response data
@@ -250,3 +271,129 @@ EOF
   "status":0,
   "message":"OK" }
 ```
+
+
+## Subscription data
+
+Clients may access subscription data via native WebSockets, SocketIO, or
+long-polling over HTTP.
+
+The preferred method to access subscription data is over native WebSockets.
+WebSockets is a web standard for receiving event-driven messages without having
+to resort to long-polling.  SocketIO is a higher-level library built on top of
+WebSockets, which has transparent long-polling fallback support, automatic
+reconnection, and the ability to define custom events; however, it is not a
+standard and language support is limited to JavaScript at the time of this
+writing.  For compatability reasons, long-polling is also supported for clients
+that are unable to utilize the WebSocket protocol.
+
+The following sections discuss the details for subscription data over native
+WebSockets, SocketIO, and long-polling over HTTP.
+
+### WebSocket and SocketIO message types
+
+When accesing subscription data via native WebSockets or SocketIO, each
+mechanism shares the same message types.  Note that when using WebSockets, that
+the message comes in the form:
+
+```javascript
+{
+    'type': /* message type */,
+    'data': /* message data */
+}
+```
+
+Socket.IO takes an event emitter approach, where a client listens on the
+different event types.  For example:
+```javascript
+sockent.on(/* message type */, function(/* message data */) {
+});
+```
+
+The following sections itemize each mesage type with the corresponding message
+data.
+
+#### Client to Server
+
+* `subscribe` - a list of subscriptions to subscribe to
+
+    ```javascript
+    // message data
+    [
+        { security: /* string */, correlationId: /* number */, fields: [/* strings */]},
+    ]
+    ```
+* `unsubscribe` - a list of correlation ids to unsubscribe to
+
+    ```javascript
+    // message data
+    [ /* numbers */ ] // note that no-array provided implies unsubscribe from everything
+    ```
+
+#### Server to Client
+
+* `data` - the payload of the each subscription message
+
+    ```javascript
+    // message data
+    {
+        correlationId: /* number */,
+        data: /* JSON payload */
+    }
+    ```
+* `err` - an error if anything goes wrong with a subscription
+
+    ```javascript
+    // message data
+    {
+        message: /* string */
+    }
+    ```
+* `subscribed` - correlation ids that have successfully subscribed
+
+    ```javascript
+    // message data
+    [
+        /* correaltion ids */
+    ]
+    ```
+* `unsubscribe` - correlation ids that have succesfully unsubscribed
+
+    ```javascript
+    // message data
+    [
+        /* correaltion ids */
+    ]
+    ```
+
+### Long-Polling API details
+
+As a last resort, clients may access subscriptions via the HTTP path
+`/subscription`.
+
+`/subscription` can take the following, mutually excluseive, query parameters:
+
+* `action` -- A HTTP POST to control starting and stopping subscriptions.  The body of the post is
+  the same as the message data for client => server messages used for WebSockets and Socket.IO  The
+  valid query parameter values are:
+    * `start`
+    * `stop`
+* `pollid` -- A HTTP GET to retrieve subscription data.  The value is a logical
+  counter that should be increasing, which acts as an implicit acknowledgement
+  of received data.
+
+Note that if a GET request with a specified value for `pollid` fails, the `pollid` may be reused to
+recover the the last set of buffered subscription data.
+
+### Subscriptions over WebSockets
+
+[examples/node/MarketDataSubscription\_ws.js](../examples/node/MarketDataSubscription_ws.js)
+
+### Subscriptions over SocketIO
+
+[examples/node/MarketDataSubscription\_socketio.js](../examples/node/MarketDataSubscription_socketio.js)
+
+### Subscriptions over Long-Polling
+
+[examples/node/MarketDataSubscription\_LongPoll.js](../examples/node/MarketDataSubscription_LongPoll.js)
+
