@@ -458,7 +458,6 @@ export class Session extends events.EventEmitter {
 
         log('Unsubscribing: ' + JSON.stringify(subscriptions));
 
-        var cids: number[] = [];
         _.forEach(subscriptions, (s: Subscription, i: number): void => {
             // XXX: O(N) - not critical but note to use ES6 Map in the future
             var cid = _.findKey(this.subscriptions, (other: Subscription): boolean => {
@@ -467,23 +466,33 @@ export class Session extends events.EventEmitter {
 
             if (undefined === cid) {
                 throw new Error('Subscription not found at index ' + i);
-            } else {
-                cids.push(_.parseInt(cid));
             }
         });
 
-        this.session.unsubscribe(_(cids).forEach((cid: number): void => {
-            process.nextTick((): void => {
-                this.subscriptions[cid].emit('end');
-                delete this.subscriptions[cid];
+        var cids = _.map(subscriptions, (s: Subscription): number => {
+            // XXX: O(N) - not critical but note to use ES6 Map in the future
+            var cid = _.findKey(this.subscriptions, (other: Subscription): boolean => {
+                return s === other;
             });
-            this.unlisten('MarketDataEvents', cid);
-        }).map((cid: number): blpapi.Subscription => {
+            return _.parseInt(cid);
+        });
+
+        var subs = _.map(cids, (cid: number): blpapi.Subscription => {
             return <blpapi.Subscription>{
                 security: ' ',
                 correlation: cid,
                 fields: []
             };
-        }).valueOf());
+        });
+
+        this.session.unsubscribe(subs);
+
+        _.forEach(cids, (cid: number): void => {
+            process.nextTick((): void => {
+                this.subscriptions[cid].emit('end');
+                delete this.subscriptions[cid];
+            });
+            this.unlisten('MarketDataEvents', cid);
+        });
     }
 }
