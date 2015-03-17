@@ -1,50 +1,45 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
 # WARNING: This script is only intended for development and testing purpose.
 #          DO NOT USE IN PRODUCTION ENVIRONMENT
-# usage: ./GenKey.sh [<path>]
+# usage: ./gen_keys.sh [<path>]
 
-# check if openssl exist
-if command -v openssl >/dev/null; then
-    echo $(openssl version)
-else
-    echo "openssl does not exist"
-    exit 1
-fi
+## INCLUDES ##
+source "$(dirname "$0")/util.sh"
 
+## FUNCTIONS ##
 gen_cert() {
-    if [ "$#" -ne 3 ]; then
-        echo "Missing parameter"
-        exit 1
-    fi
-
-    DIR="$1"
-    NAME="$2"
-    SUB="$3"
+    local -r dir="$1"
+    local -r name="$2"
+    local -r sub="$3"
     # generate private key
-    openssl genrsa -out "$DIR"/"$NAME"-key.pem 1024
+    openssl genrsa -out "$dir/$name-key.pem" 1024
     # generate csr
-    openssl req -new -key "$DIR"/"$NAME"-key.pem \
-        -out "$DIR"/"$NAME"-csr.pem -text -subj "$SUB"
+    openssl req -new -key "$dir/$name-key.pem" \
+        -out "$dir/$name-csr.pem" -text -subj "$sub"
     # generate cert
-    openssl x509 -req -in "$DIR"/"$NAME"-csr.pem \
-        -CA "$DIR"/ca-cert.pem -CAkey "$DIR"/ca-key.pem \
-        -set_serial 01 -out "$DIR"/"$NAME"-cert.pem -text
+    openssl x509 -req -in "$dir/$name-csr.pem" \
+        -CA "$dir/ca-cert.pem" -CAkey "$dir/ca-key.pem" \
+        -set_serial 01 -out "$dir/$name-cert.pem" -text
 }
 
-# make directory for certs and keys, if receive path argument
-DIR=${1:-${PWD}}
-if [ "$#" -eq 1 ]; then
-    mkdir -p "$DIR"
-fi
+## MAIN ##
+main() {
+    cmd_exist_or_error openssl
 
-# generate ca private key
-openssl genrsa -out "$DIR"/ca-key.pem 1024
-# generate ca
-openssl req -new -x509 -text -key "$DIR"/ca-key.pem \
-    -out "$DIR"/ca-cert.pem -subj "/CN=BLPAPI_HTTP_TEST_CA/"
+    # make directory if path provided
+    local -r dir="${1:-${PWD}}"
+    mkdir -p "$dir"
 
-# generate server cert
-gen_cert "$DIR" server "/CN=localhost/"
-# generate client cert
-gen_cert "$DIR" client "/CN=BLPAPI_HTTP_TEST_CLIENT/"
+    # generate ca private key
+    openssl genrsa -out "$dir/ca-key.pem" 1024
+    # generate ca
+    openssl req -new -x509 -text -key "$dir/ca-key.pem" \
+        -out "${dir}/ca-cert.pem" -subj "/CN=BLPAPI_HTTP_TEST_CA/"
+
+    # generate server cert
+    gen_cert "$dir" server "/CN=localhost/"
+    # generate client cert
+    gen_cert "$dir" client "/CN=BLPAPI_HTTP_TEST_CLIENT/"
+}
+main
