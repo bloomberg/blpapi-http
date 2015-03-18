@@ -3,3 +3,10 @@ node_js:
     - "0.10"
     - "0.12"
     - "iojs"
+
+before_install:
+    - sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu trusty-backports main restricted universe multiverse' -y
+    - sudo apt-get update -qq
+
+install:
+    - sudo apt-get install -y shellcheck
