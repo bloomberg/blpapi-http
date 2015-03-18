@@ -83,7 +83,7 @@ describe('Subscription-socket-io', (): void => {
         });
 
         it('should let client connect successfully', (done: Function): void => {
-            socket.once('connected', (): void => {
+            socket.once('connect', (): void => {
                 done();
             });
         });
@@ -552,7 +552,7 @@ describe('Subscription-socket-io', (): void => {
                     });
                     socket.on('disconnect', (): void => {
                         socket = io.connect(url, opt);
-                        socket.on('connected', (): void => {
+                        socket.on('connect', (): void => {
                             done();
                         });
                     });

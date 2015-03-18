@@ -39,8 +39,13 @@ function getCorrelationIds(subscriptions: Subscription[]): number[] {
 
 function onConnect(socket: Interface.ISocket): void
 {
-    initialize(socket)
-        .then(setup)
+    socket.log.info({Address: socket.getIP()}, 'Client connected.');
+    if (conf.get('https.enable') && conf.get('logging.clientDetail')) {
+        socket.log.debug({cert: socket.getCert()}, 'Client certificate.');
+    }
+
+    // Get blpSession
+    var blpSocketSession = blpSession.getSocketSession(socket)
         .catch((err: Error): any => {
             socket.log.error(err);
             if (socket.isConnected()) {
@@ -48,33 +53,21 @@ function onConnect(socket: Interface.ISocket): void
                 socket.disconnect();
             }
         });
-}
 
-function initialize(socket: Interface.ISocket): Promise<Interface.ISocket>
-{
-    socket.log.info({Address: socket.getIP()}, 'Client connected.');
-    if (conf.get('https.enable') && conf.get('logging.clientDetail')) {
-        socket.log.debug({cert: socket.getCert()}, 'Client certificate.');
-    }
-
-    // Get blpSession
-    return blpSession.getSocketSession(socket);
-}
-
-function setup(socket: Interface.ISocket): void
-{
     // Create subscriptions store
     var activeSubscriptions = new Map<Subscription>();
     var receivedSubscriptions = new Map<Subscription>();
 
-    // Clean up sockets for cases where the underlying session terminated unexpectedly
-    socket.blpSession.once('SessionTerminated', (): void => {
-        if (socket.isConnected()) {
-            var message = 'blpSession terminated unexpectedly.';
-            socket.log.debug(message);
-            socket.sendError(message);
-            socket.disconnect();
-        }
+    blpSocketSession.then((socket: Interface.ISocket): void => {
+        // Clean up sockets for cases where the underlying session terminated unexpectedly
+        socket.blpSession.once('SessionTerminated', (): void => {
+            if (socket.isConnected()) {
+                var message = 'blpSession terminated unexpectedly.';
+                socket.log.debug(message);
+                socket.sendError(message);
+                socket.disconnect();
+            }
+        });
     });
 
     // Subscribe
@@ -147,19 +140,17 @@ function setup(socket: Interface.ISocket): void
             sub.on('error', (err: Error): void => {
                 socket.log.error(err, 'blpapi.Session subscription error occurred.');
                 socket.sendError(err.message);
-                sub.removeAllListeners();
-                activeSubscriptions.delete(sub.correlationId);
-                receivedSubscriptions.delete(sub.correlationId);
+                remove(sub);
             });
         });
         if (!isValid) {
             return;
         }
 
-        // Subscribe user request through blpapi-wrapper
-        // TODO: Support authorized identity.
-        socket.blpSession.subscribe(subscriptions, undefined)
-            .then((): void => {
+        blpSocketSession.then((socket: Interface.ISocket): void => {
+            // Subscribe user request through blpapi-wrapper
+            // TODO: Support authorized identity.
+            socket.blpSession.subscribe(subscriptions, undefined).then((): void => {
                 if (socket.isConnected()) {
                     subscriptions.forEach((s: Subscription): void => {
                         activeSubscriptions.set(s.correlationId, s);
@@ -167,27 +158,16 @@ function setup(socket: Interface.ISocket): void
                     socket.log.debug('Subscribed');
                     socket.notifySubscribed(getCorrelationIds(subscriptions));
                 } else { // Unsubscribe if socket already closed
-                    try {
-                        socket.blpSession.unsubscribe(subscriptions);
-                    } catch (ex) {
-                        socket.log.error(ex, 'Error Unsubscribing');
-                    }
-                    subscriptions.forEach((s: Subscription): void => {
-                        s.removeAllListeners();
-                        receivedSubscriptions.delete(s.correlationId);
-                    });
-                    socket.log.debug('Unsubscribed all active subscriptions');
+                    unsubscribe(subscriptions);
                 }
             }).catch( (err: Error): void => {
                 socket.log.error(err, 'Error Subscribing');
-                subscriptions.forEach((s: Subscription): void => {
-                    s.removeAllListeners();
-                    receivedSubscriptions.delete(s.correlationId);
-                });
+                subscriptions.forEach(remove);
                 if (socket.isConnected()) {
                     socket.sendError(err.message);
                 }
             });
+        });
     });
 
     // Unsubscribe
@@ -239,44 +219,41 @@ function setup(socket: Interface.ISocket): void
                 return;
             }
         }
-
-        try {
-            socket.blpSession.unsubscribe(subscriptions);
-        } catch (ex) {
-            message = 'Error unsubscribing';
-            socket.log.error(message);
-            socket.sendError(message);
-            return;
-        }
-        subscriptions.forEach((s: Subscription): void => {
-            s.removeAllListeners();
-            activeSubscriptions.delete(s.correlationId);
-            receivedSubscriptions.delete(s.correlationId);
-        });
-        socket.notifyUnsubscribed(getCorrelationIds(subscriptions));
-        socket.log.debug({activeSubscriptions: activeSubscriptions.size}, 'Unsubscribed.');
+        unsubscribe(subscriptions, true /* notify */);
     });
 
     // Disconnect
     socket.on('disconnect', (): void => {
         // Unsubscribe all active subscriptions
         if (activeSubscriptions.size) {
-            var subscriptions: Subscription[] = activeSubscriptions.values();
-            try {
-                socket.blpSession.unsubscribe(subscriptions);
-            } catch (ex) {
-                socket.log.error(ex, 'Error Unsubscribing');
-            }
-            subscriptions.forEach((s: Subscription): void => {
-                s.removeAllListeners();
-                activeSubscriptions.delete(s.correlationId);
-                receivedSubscriptions.delete(s.correlationId);
-            });
-            socket.log.debug('Unsubscribed all active subscriptions');
+            unsubscribe(activeSubscriptions.values());
         }
         socket.log.info('Client disconnected.');
     });
 
-    // Complete server setup
-    socket.notifyConnected();
+    function remove(s: Subscription): void
+    {
+        s.removeAllListeners();
+        activeSubscriptions.delete(s.correlationId);
+        receivedSubscriptions.delete(s.correlationId);
+    }
+
+    function unsubscribe(subscriptions: Subscription[],
+                         notify: boolean = false): void
+    {
+        blpSocketSession.then((socket: Interface.ISocket): void => {
+            socket.blpSession.unsubscribe(subscriptions);
+            subscriptions.forEach(remove);
+            socket.log.debug({ activeSubscriptions: activeSubscriptions.size },
+                             'Unsubscribed.');
+            if (notify && socket.isConnected()) {
+                socket.notifyUnsubscribed(getCorrelationIds(subscriptions));
+            }
+        }).catch((err: Error): void => {
+            socket.log.error(err, 'Error Unsubscribing');
+            if (notify && socket.isConnected()) {
+                socket.sendError('Error unsubscribing');
+            }
+        });
+    }
 }

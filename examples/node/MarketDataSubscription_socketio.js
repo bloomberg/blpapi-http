@@ -27,10 +27,9 @@ var opt = {
 
 var socket = io.connect(url, opt);
 
-socket.on('connected', function () {
-    // XXX: This listner should be removed once #123 is closed.
+socket.on('connect', function () {
     console.log('Connected');
-    socket.emit('subscribe', subscriptions);
+    socket.emit('subscribe', SUBSCRIPTIONS);
 });
 
 var data_events_count = 0;
