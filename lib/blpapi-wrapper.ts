@@ -257,9 +257,8 @@ export class Session extends events.EventEmitter {
     private doRequest(uri: string,
                       requestName: string,
                       request: any,
-                      callback: IRequestCallback,
-                      isAuthRequest: boolean,
-                      identity?: blpapi.Identity): void
+                      execute: (correlatorId: number) => void,
+                      callback: IRequestCallback): void
     {
         this.validateSession();
 
@@ -269,13 +268,7 @@ export class Session extends events.EventEmitter {
         this.openService(uri).then((): void => {
             log(util.format('Request: %s|%d', requestName, correlatorId));
             trace(request);
-            if (isAuthRequest) {
-                this.session.authorizeUser(request, correlatorId);
-            } else {
-                // TODO: blpapi-node doesn't accept null; remove this when that's fixed.
-                identity = identity || undefined;
-                this.session.request(uri, requestName, request, correlatorId, identity);
-            }
+            execute(correlatorId);
             assert(requestName in REQUEST_TO_RESPONSE_MAP,
                    util.format('Request, %s, not handled', requestName));
             this.listen(REQUEST_TO_RESPONSE_MAP[requestName],
@@ -350,8 +343,27 @@ export class Session extends events.EventEmitter {
             identity: blpapi.Identity,
             callback: IRequestCallback): void
     {
-        var isAuthRequest = false;
-        this.doRequest(uri, requestName, request, callback, isAuthRequest, identity);
+        var executeRequest = (correlatorId: number): void => {
+            this.session.request(uri, requestName, request, correlatorId, identity);
+        };
+        this.doRequest(uri, requestName, request, executeRequest, callback);
+    }
+
+    authorize(cb?: (err: any, value: any) => void): Promise<void> {
+        return new Promise<void>((resolve: () => void, reject: (err: Error) => void): void => {
+            var callback = (err: Error, data?: any, isFinal?: boolean): void => {
+                if (err) {
+                    reject(err);
+                } else if (isFinal) {
+                    resolve();
+                }
+            };
+            this.doRequest('//blp/apiauth', // uri
+                           'AuthorizationRequest', // requestName
+                           null, // request
+                           this.session.authorize.bind(this.session, '//blp/apiauth'),
+                           callback);
+        }).nodeify(cb);
     }
 
     authorizeUser(request: any, cb?: (err: any, value: any) => void): Promise<blpapi.Identity> {
@@ -374,10 +386,11 @@ export class Session extends events.EventEmitter {
                     }
                 }
             }
-            var uri = '//blp/apiauth';
-            var requestName = 'AuthorizationRequest';
-            var isAuthRequest = true;
-            this.doRequest(uri, requestName, request, callback, isAuthRequest);
+            this.doRequest('//blp/apiauth', // uri
+                           'AuthorizationRequest', // requestName
+                           request,
+                           this.session.authorizeUser.bind(this.session, request),
+                           callback);
         }).nodeify(cb);
     }
 
@@ -425,8 +438,6 @@ export class Session extends events.EventEmitter {
         })).then((): void => {
             log('Subscribing to: ' + JSON.stringify(subscriptions));
 
-            // TODO: blpapi-node doesn't accept null; remove this when that's fixed.
-            identity = identity || undefined;
             this.session.subscribe(subs, identity);
 
             _.forEach(subs, (s: blpapi.Subscription): void => {
