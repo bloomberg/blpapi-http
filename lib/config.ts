@@ -6,6 +6,7 @@ import path = require('path');
 import convict = require('convict');
 import bunyan = require('bunyan');
 import optimist = require('optimist');
+import util = require('util');
 
 var convictConf: convict.Config;
 var otherConf: {[index: string]: any};
@@ -42,6 +43,20 @@ export var emitter = new events.EventEmitter();
                 default: 8194,
                 env: 'BLPAPI_HTTP_API_PORT',
                 arg: 'api-port'
+            },
+            'authenticationMode': {
+                doc: 'The authentication mode to use for B-PIPE Authorization',
+                format: String,
+                default: 'APPLICATION_ONLY',
+                env: 'BLPAPI_HTTP_API_AUTHENTICATION_MODE',
+                arg: 'api-authenticationMode'
+            },
+            'authenticationAppName': {
+                doc: 'The application name for authentication purposes',
+                format: String,
+                default: '',
+                env: 'BLPAPI_HTTP_API_AUTHENTICATION_APPNAME',
+                arg: 'api-authenticationAppName'
             }
         },
         'port': {
@@ -301,9 +316,35 @@ export var emitter = new events.EventEmitter();
     }
 
     // BLPAPI Session options
-    otherConf['sessionOptions'] = {
+    var blpapiSessionOptions: any = {
         serverHost: convictConf.get('api.host'),
         serverPort: convictConf.get('api.port')
+    };
+
+    var authorizeOnStartup = false;
+    var authenticationOptions: string = null;
+    var appName = convictConf.get('api.authenticationAppName');
+    if ('' !== appName) {
+        var mode = convictConf.get('api.authenticationMode');
+        if ('APPLICATION_ONLY' !== mode) {
+            throw new Error(util.format('Bad value for api.authenticationMode: %s', mode));
+        }
+        authorizeOnStartup = true;
+        // TODO: Add support for USER_AND_APPLICATION
+        authenticationOptions = util.format('AuthenticationMode=%s;' +
+                                            'ApplicationAuthenticationType=APPNAME_AND_KEY;' +
+                                            'ApplicationName=%s',
+                                            mode,
+                                            appName);
+    }
+    // TODO: Add support for user-only auth modes.
+
+    if (null !== authenticationOptions) {
+        blpapiSessionOptions['authenticationOptions'] = authenticationOptions;
+    }
+    otherConf['sessionOptions'] = {
+        blpapiSessionOptions: blpapiSessionOptions,
+        authorizeOnStartup: authorizeOnStartup
     };
 
 })();
