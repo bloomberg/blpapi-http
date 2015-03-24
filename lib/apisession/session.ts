@@ -2,25 +2,27 @@
 
 import bunyan = require('bunyan');
 import BAPI = require('../blpapi-wrapper');
-import Subscription = require('../subscription/subscription');
 import Map = require('../util/map');
 import conf = require('../config');
+import interfaces = require('../interface');
 
 function curSeconds(): number
 {
     return process.hrtime()[0];
 }
 
+type ISubscription = interfaces.ISubscription;
+
 export = Session;
 
-class Session {
+class Session implements interfaces.IAPISession {
     // PRIVATE VARIABLES
     private _blpsess: BAPI.Session;
     private _logger: bunyan.Logger;
     private _seconds: number; // Last checked activity timestamp
     private _expired: boolean = false;
-    private _activeSubscriptions: Map<Subscription> = new Map<Subscription>();
-    private _receivedSubscriptions: Map<Subscription> = new Map<Subscription>();
+    private _activeSubscriptions: Map<ISubscription> = new Map<ISubscription>();
+    private _receivedSubscriptions: Map<ISubscription> = new Map<ISubscription>();
 
     // PUBLIC VARIABLES
     public inUse: number = 0;
@@ -29,7 +31,7 @@ class Session {
 
     // PRIVATE FUNCTIONS
     private clear(): void {
-        this._receivedSubscriptions.forEach((sub: Subscription): boolean => {
+        this._receivedSubscriptions.forEach((sub: ISubscription): boolean => {
             sub.removeAllListeners();
             return true;
         });
@@ -62,11 +64,11 @@ class Session {
         return this._expired;
     }
 
-    get activeSubscriptions(): Map<Subscription> {
+    get activeSubscriptions(): Map<ISubscription> {
         return this._activeSubscriptions;
     }
 
-    get receivedSubscriptions(): Map<Subscription> {
+    get receivedSubscriptions(): Map<ISubscription> {
         return this._receivedSubscriptions;
     }
 

@@ -2,13 +2,14 @@
 
 import BAPI = require('../blpapi-wrapper');
 import BufferManager = require('../util/historical-buffer-manager');
+import interfaces = require('../interface');
 
 export = Subscription;
 
-class Subscription extends BAPI.Subscription {
+class Subscription extends BAPI.Subscription implements interfaces.ISubscription {
 
     correlationId: number;
-    buffer: BufferManager<Object> = null;
+    buffer: interfaces.IHistoricalBufferManager<Object> = null;
 
     constructor(cid: number,
                 security: string,

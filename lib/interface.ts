@@ -4,18 +4,55 @@ import blpapi = require('blpapi');
 import restify = require('restify');
 import bunyan = require('bunyan');
 import BAPI = require('./blpapi-wrapper');
-import Session = require('./apisession/session');
-
-export interface IOurRequest extends restify.Request {
-    clientCert?: any;
-    blpSession: BAPI.Session;
-    apiSession?: Session;
-    identity?: blpapi.Identity;
-}
 
 export interface IBufferedData<T> {
     buffer: T[];
     overflow: number;
+}
+
+export interface IHistoricalBufferManager<T> {
+    pushValue(data: T): void;
+    startNewBuffer(bufferLength?: number): IBufferedData<T>;
+    getBuffer(depth?: number): IBufferedData<T>;
+    isEmpty(depth?: number): boolean;
+}
+
+export interface ISubscription extends BAPI.Subscription {
+    correlationId: number;
+    buffer: IHistoricalBufferManager<Object>;
+}
+
+export interface IMap<T> {
+    size: number;
+    clear(): void;
+    set(key: string|number, val: T): void;
+    get(key: string|number): T;
+    has(key: string|number): boolean;
+    delete(key: string|number): void;
+    keys(): string[];
+    values(): T[];
+    entries(): any[][];
+    forEach(callbackFn: (val: T, key?: string, map?: IMap<T>) => boolean, thisArg?: any): void;
+}
+
+export interface IAPISession {
+    inUse: number;
+    lastPollId: number;
+    lastSuccessPollId: number;
+    seconds: number;
+    expired: boolean;
+    activeSubscriptions: IMap<ISubscription>;
+    receivedSubscriptions: IMap<ISubscription>;
+    expire(): boolean;
+    renew(): void;
+    isExpirable(): boolean;
+}
+
+export interface IOurRequest extends restify.Request {
+    clientCert?: any;
+    blpSession: BAPI.Session;
+    apiSession?: IAPISession;
+    identity?: blpapi.Identity;
 }
 
 export interface IOurResponse extends restify.Response {

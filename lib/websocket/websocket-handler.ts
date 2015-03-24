@@ -23,6 +23,8 @@ type SubscriptionOption = {
     options?: any;
 }
 
+type ISubscription = Interface.ISubscription;
+
 // GLOBAL
 var LOGGER: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
 
@@ -40,8 +42,8 @@ export function wsOnConnect(s: webSocket): void
 }
 
 // PRIVATE FUNCTIONS
-function getCorrelationIds(subscriptions: Subscription[]): number[] {
-    return subscriptions.map((s: Subscription): number => {
+function getCorrelationIds(subscriptions: ISubscription[]): number[] {
+    return subscriptions.map((s: ISubscription): number => {
         return s.correlationId;
     });
 }
@@ -64,8 +66,8 @@ function onConnect(socket: Interface.ISocket): void
         });
 
     // Create subscriptions store
-    var activeSubscriptions = new Map<Subscription>();
-    var receivedSubscriptions = new Map<Subscription>();
+    var activeSubscriptions = new Map<ISubscription>();
+    var receivedSubscriptions = new Map<ISubscription>();
 
     blpSocketSession.then((socket: Interface.ISocket): void => {
         // Clean up sockets for cases where the underlying session terminated unexpectedly
@@ -125,7 +127,7 @@ function onConnect(socket: Interface.ISocket): void
         }
 
         // Create Subscription object array and add event listeners
-        var subscriptions = _.map(data, (s: SubscriptionOption): Subscription => {
+        var subscriptions = _.map(data, (s: SubscriptionOption): ISubscription => {
             var sub = new Subscription(s.correlationId,
                                        s.security,
                                        s.fields,
@@ -161,7 +163,7 @@ function onConnect(socket: Interface.ISocket): void
             // TODO: Support authorized identity.
             socket.blpSession.subscribe(subscriptions, undefined).then((): void => {
                 if (socket.isConnected()) {
-                    subscriptions.forEach((s: Subscription): void => {
+                    subscriptions.forEach((s: ISubscription): void => {
                         activeSubscriptions.set(s.correlationId, s);
                     });
                     socket.log.debug('Subscribed');
@@ -194,7 +196,7 @@ function onConnect(socket: Interface.ISocket): void
             return;
         }
 
-        var subscriptions: Subscription[] = [];
+        var subscriptions: ISubscription[] = [];
 
         if (!data) {
             // If no correlation Id specified
@@ -240,14 +242,14 @@ function onConnect(socket: Interface.ISocket): void
         socket.log.info('Client disconnected.');
     });
 
-    function remove(s: Subscription): void
+    function remove(s: ISubscription): void
     {
         s.removeAllListeners();
         activeSubscriptions.delete(s.correlationId);
         receivedSubscriptions.delete(s.correlationId);
     }
 
-    function unsubscribe(subscriptions: Subscription[],
+    function unsubscribe(subscriptions: ISubscription[],
                          notify: boolean = false): void
     {
         blpSocketSession.then((socket: Interface.ISocket): void => {

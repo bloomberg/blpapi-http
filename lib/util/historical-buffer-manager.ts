@@ -24,7 +24,7 @@ class Buffer<T> {
 export = HistoricalBufferManager;
 
 // This class creates a buffer manager which manage N buffers(N is taken from constructor parameter)
-class HistoricalBufferManager<T> {
+class HistoricalBufferManager<T> implements interfaces.IHistoricalBufferManager<T> {
 
     // PRIVATE VARIABLES
     private _buffers: Buffer<T>[] = [];

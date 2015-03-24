@@ -11,8 +11,6 @@ import Interface = require('../interface');
 import conf = require('../config');
 import Subscription = require('../subscription/subscription');
 import Session = require('../apisession/session');
-import Map = require('../util/map');
-import BAPI = require('../blpapi-wrapper');
 import auth = require('./auth');
 
 // Type used for request handlers dispatching, i.e. where the top level request includes some
@@ -31,6 +29,8 @@ type SubscriptionOption = {
     options?: any;
 }
 
+type ISubscription = Interface.ISubscription;
+
 var SUBSCRIPTION_ACTION_MAP: ActionMap = {
     'start': onSubscribe,
     'stop':  onUnsubscribe
@@ -46,16 +46,19 @@ type Properties = {
 }
 
 // PRIVATE FUNCTIONS
-function getSubscriptionsProp(subscriptions: Subscription[]): Properties {
-    var corrIds = subscriptions.map((s: Subscription): number => {
+function getSubscriptionsProp(subscriptions: ISubscription[]): Properties {
+    var corrIds = subscriptions.map((s: ISubscription): number => {
         return s.correlationId;
     });
     var result: Properties = { 'correlationIds': corrIds };
     return result;
 }
 
-function validatePollId(session: Session, newPollId: number): { isValid: boolean;
-                                                                fetchNewData?: boolean; }
+function validatePollId(session: Interface.IAPISession,
+                        newPollId: number): {
+                                                isValid: boolean;
+                                                fetchNewData?: boolean;
+                                            }
 {
     if (newPollId === undefined) {
         return { isValid: false };
@@ -98,15 +101,15 @@ function validatePollId(session: Session, newPollId: number): { isValid: boolean
     }
 }
 
-function startAllNewBuffers(subscriptions: Subscription[]): Object[]
+function startBuffers(subscriptions: ISubscription[]): Object[]
 {
     var buffers: Object[] = [];
     // Check if we have new data for any subscriptions
-    var hasNewData: boolean = _.some(subscriptions, (sub: Subscription): boolean => {
+    var hasNewData: boolean = _.some(subscriptions, (sub: ISubscription): boolean => {
         return !sub.buffer.isEmpty();
     });
     if (hasNewData) { // Start a new buffer for every subscription and return back the new data
-        subscriptions.forEach((sub: Subscription): void => {
+        subscriptions.forEach((sub: ISubscription): void => {
             var buff: Interface.IBufferedData<Object> = sub.buffer.startNewBuffer();
             if (buff.buffer.length) {
                 buffers.push({
@@ -120,10 +123,10 @@ function startAllNewBuffers(subscriptions: Subscription[]): Object[]
     return buffers;
 }
 
-function getAllOldBuffers(subscriptionStore: Map<Subscription>): Object[]
+function getOldBuffers(subscriptions: Interface.IMap<ISubscription>): Object[]
 {
     var buffers: Object[] = [];
-    subscriptionStore.forEach((sub: Subscription): boolean => {
+    subscriptions.forEach((sub: ISubscription): boolean => {
         if (!sub.buffer.isEmpty(1)) {  // Check if old buffer is empty
             var buff: Interface.IBufferedData<Object> = sub.buffer.getBuffer(1);
             buffers.push({
@@ -213,7 +216,7 @@ function onSubscribe(req: Interface.IOurRequest,
     }
 
     // Create Subscription object array and add event listeners
-    var subscriptions: Subscription[] = _.map(req.body, (s: SubscriptionOption): Subscription => {
+    var subscriptions: ISubscription[] = _.map(req.body, (s: SubscriptionOption): ISubscription => {
         var sub = new Subscription(s.correlationId,
                                    s.security,
                                    s.fields,
@@ -248,14 +251,14 @@ function onSubscribe(req: Interface.IOurRequest,
     req.blpSession.subscribe(subscriptions, req.identity)
         .then((): void => {
             if (!req.apiSession.expired) {
-                subscriptions.forEach((s: Subscription): void => {
+                subscriptions.forEach((s: ISubscription): void => {
                     req.apiSession.activeSubscriptions.set(s.correlationId, s);
                 });
                 req.log.debug('Subscribed');
                 res.sendWhole(0, 'Subscribed', getSubscriptionsProp(subscriptions));
             } else { // Unsubscribe if session already expires
                 req.blpSession.unsubscribe(subscriptions);
-                subscriptions.forEach((s: Subscription): void => {
+                subscriptions.forEach((s: ISubscription): void => {
                     s.removeAllListeners();
                     req.apiSession.receivedSubscriptions.delete(s.correlationId);
                 });
@@ -264,7 +267,7 @@ function onSubscribe(req: Interface.IOurRequest,
             return next();
         })
         .catch((err: Error): any => {
-            subscriptions.forEach((s: Subscription): void => {
+            subscriptions.forEach((s: ISubscription): void => {
                 req.apiSession.receivedSubscriptions.delete(s.correlationId);
                 s.removeAllListeners();
             });
@@ -282,7 +285,7 @@ function onUnsubscribe(req: Interface.IOurRequest,
         return next(new restify.BadRequestError('No active subscriptions.'));
     }
 
-    var subscriptions: Subscription[] = [];
+    var subscriptions: ISubscription[] = [];
     // If no correlation Id specified,
     // the default behavior is to unsubscribe all active subscriptions
     if (!req.body) {
@@ -315,8 +318,8 @@ function onUnsubscribe(req: Interface.IOurRequest,
 
     try {
         req.blpSession.unsubscribe(subscriptions);
-        var result: Object[] = startAllNewBuffers(subscriptions);
-        subscriptions.forEach((sub: Subscription): void => {
+        var result: Object[] = startBuffers(subscriptions);
+        subscriptions.forEach((sub: ISubscription): void => {
             sub.removeAllListeners();
             req.apiSession.activeSubscriptions.delete(sub.correlationId);
             req.apiSession.receivedSubscriptions.delete(sub.correlationId);
@@ -522,7 +525,7 @@ export function onPollSubscriptions(req: Interface.IOurRequest,
         // For fetching new data
         p = ((): Promise<Object[]> => {
                 req.log.debug('Long polling...');
-                var buff = startAllNewBuffers(req.apiSession.activeSubscriptions.values());
+                var buff = startBuffers(req.apiSession.activeSubscriptions.values());
                 if (buff.length) {
                     req.apiSession.lastSuccessPollId = pollId;
                     req.log.debug('Got data. Sent back.');
@@ -537,9 +540,7 @@ export function onPollSubscriptions(req: Interface.IOurRequest,
                                 clearInterval(interval);
                                 reject(new Error('No active subscriptions'));
                             }
-                            var buffer = startAllNewBuffers(
-                                req.apiSession.activeSubscriptions.values()
-                            );
+                            var buffer = startBuffers(req.apiSession.activeSubscriptions.values());
                             if (buffer.length) {
                                 clearInterval(interval);
                                 req.apiSession.lastSuccessPollId = pollId;
@@ -556,7 +557,7 @@ export function onPollSubscriptions(req: Interface.IOurRequest,
         // For fetching old data
         p = ((): Promise<Object[]> => {
                 req.log.debug('Old poll id received. Resent last sent data.');
-                return Promise.resolve(getAllOldBuffers(req.apiSession.activeSubscriptions));
+                return Promise.resolve(getOldBuffers(req.apiSession.activeSubscriptions));
             })();
     }
 
