@@ -4,7 +4,7 @@
   "description": "Bloomberg Open API HTTP Proxy",
   "main": "server.js",
   "dependencies": {
-    "blpapi": "^1.2.0",
+    "blpapi": "thmiceli/blpapi-node#move-wrapper-to-node",
     "bluebird": "^2.9.13",
     "bunyan": "^1.2.3",
     "convict": "^0.6.1",

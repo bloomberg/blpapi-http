@@ -1,6 +1,6 @@
 /// <reference path='../../typings/tsd.d.ts' />
 
-import BAPI = require('../blpapi-wrapper');
+import BAPI = require('blpapi');
 import BufferManager = require('../util/historical-buffer-manager');
 import interfaces = require('../interface');
 

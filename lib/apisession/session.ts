@@ -1,7 +1,7 @@
 /// <reference path='../../typings/tsd.d.ts' />
 
 import bunyan = require('bunyan');
-import BAPI = require('../blpapi-wrapper');
+import BAPI = require('blpapi');
 import Map = require('../util/map');
 import conf = require('../config');
 import interfaces = require('../interface');

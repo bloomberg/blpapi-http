@@ -2,7 +2,7 @@
 
 import events = require('events');
 import bunyan = require('bunyan');
-import blpapi = require('../blpapi-wrapper');
+import blpapi = require('blpapi');
 import Interface = require('../interface');
 import emitterAdapter = require('./socket-event-emitter-adapter');
 

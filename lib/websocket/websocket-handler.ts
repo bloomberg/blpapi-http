@@ -161,7 +161,7 @@ function onConnect(socket: Interface.ISocket): void
         blpSocketSession.then((socket: Interface.ISocket): void => {
             // Subscribe user request through blpapi-wrapper
             // TODO: Support authorized identity.
-            socket.blpSession.subscribe(subscriptions, undefined).then((): void => {
+            socket.blpSession.subscribe(subscriptions).then((): void => {
                 if (socket.isConnected()) {
                     subscriptions.forEach((s: ISubscription): void => {
                         activeSubscriptions.set(s.correlationId, s);
