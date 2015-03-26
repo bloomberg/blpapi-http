@@ -238,6 +238,7 @@ export class Session extends events.EventEmitter implements ISession {
     }
     unsubscribe(subs: Subscription[]): Session {
         // As long as we no longer send data event via ipc for unsubscribed cids, no-ops
+        ipc.emit('wait-to-unsubscribe', subs);
         return this;
     }
     request(uri: string,

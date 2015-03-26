@@ -1,5 +1,6 @@
 /// <reference path='../../typings/tsd.d.ts' />
 
+import util = require('util');
 import _ = require('lodash');
 import Promise = require('bluebird');
 import bunyan = require('bunyan');
@@ -13,6 +14,14 @@ import Interface = require('../interface');
 import blpSession = require('../middleware/blp-session');
 import SocketIOWrapper = require('./socket-io-wrapper');
 import WSWrapper = require('./ws-wrapper');
+
+// Type used for subscription input from request body
+type SubscriptionOption = {
+    correlationId: number;
+    security: string;
+    fields: string[];
+    options?: any;
+}
 
 // GLOBAL
 var LOGGER: bunyan.Logger = bunyan.createLogger(conf.get('loggerOptions'));
@@ -79,48 +88,48 @@ function onConnect(socket: Interface.ISocket): void
         }
 
         // Validate input options
-        var isValid = true;
-        var subscriptions: Subscription[] = [];
         if (!data || !data.length) {
             var message = 'No valid subscriptions found.';
             socket.log.debug(message);
             socket.sendError(message);
             return;
         }
-        _.forEach(data, (s: {'correlationId': number;
-                          'security': string;
-                          'fields': string[];
-                          'options'?: any }): boolean => {
-            // Check if all requests are valid
-            // The Subscribe request will proceed only if all subscriptions are valid
+        var errMessage: string;
+        var isValid: boolean = _.every(data, (s: SubscriptionOption): boolean => {
             if (!_.has(s, 'correlationId') ||
                 !_.isNumber(s.correlationId) ||
                 !_.has(s, 'security') ||
                 !_.isString(s.security) ||
                 !_.has(s, 'fields') ||
-                !_.isArray(s.fields)) {
-
-                var message = 'Invalid subscription option.';
-                socket.log.debug(message);
-                socket.sendError(message);
-                isValid = false;
+                !_.isArray(s.fields))
+            {
+                errMessage = 'Invalid subscription option.';
                 return false;
             }
-
             if (receivedSubscriptions.has(s.correlationId)) {
-                message = 'Correlation id ' + s.correlationId + ' already exists.';
-                socket.log.debug(message);
-                socket.sendError(message);
-                isValid = false;
+                errMessage = util.format('Correlation Id %d already exist.', s.correlationId);
                 return false;
             }
+            return true;
+        });
+        if (!isValid) {
+            socket.log.debug(errMessage);
+            socket.sendError(errMessage);
+            return;
+        }
+        if (data.length !== _(data).pluck('correlationId').uniq().value().length) {
+            errMessage = 'Duplicate correlation Id received.';
+            socket.log.debug(errMessage);
+            socket.sendError(errMessage);
+            return;
+        }
 
+        // Create Subscription object array and add event listeners
+        var subscriptions = _.map(data, (s: SubscriptionOption): Subscription => {
             var sub = new Subscription(s.correlationId,
                                        s.security,
                                        s.fields,
                                        s.options);
-            subscriptions.push(sub);
-            receivedSubscriptions.set(sub.correlationId, sub);
 
             // Add event listener for each subscription
             sub.on('data', (data: any): void => {
@@ -142,10 +151,10 @@ function onConnect(socket: Interface.ISocket): void
                 socket.sendError(err.message);
                 remove(sub);
             });
+
+            receivedSubscriptions.set(sub.correlationId, sub);
+            return sub;
         });
-        if (!isValid) {
-            return;
-        }
 
         blpSocketSession.then((socket: Interface.ISocket): void => {
             // Subscribe user request through blpapi-wrapper
@@ -203,19 +212,19 @@ function onConnect(socket: Interface.ISocket): void
             }
             // Next, validate all correlation Ids
             // Will error if any invalid correlation Id received
-            var isAllValid = true;
-            _.uniq(data.correlationIds).forEach((cid: number): boolean => {
+            var errMessage: string;
+            var isAllValid = _.every(_.uniq(data.correlationIds), (cid: number): boolean => {
                 if (activeSubscriptions.has(cid)) {
                     subscriptions.push(activeSubscriptions.get(cid));
-                } else {
-                    isAllValid = false;
-                    var message = 'Invalid correlation Id ' + cid + ' received.';
-                    socket.log.debug(message);
-                    socket.sendError(message);
-                    return false;
+                    return true;
                 }
+
+                errMessage = util.format('Invalid correlation Id %d received.', cid);
+                return false;
             });
             if (!isAllValid) {
+                socket.log.debug(errMessage);
+                socket.sendError(errMessage);
                 return;
             }
         }
