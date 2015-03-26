@@ -10,7 +10,7 @@ import restify = require('restify');
 import Interface = require('../interface');
 import Map = require('../util/map');
 
-var sIdentityMap: Map<blpapi.Identity> = new Map<blpapi.Identity>();
+var sIdentityMap: Map<blpapi.IIdentity> = new Map<blpapi.IIdentity>();
 
 export function getIdentity(req: Interface.IOurRequest,
                             res: Interface.IOurResponse,
@@ -24,7 +24,7 @@ export function getIdentity(req: Interface.IOurRequest,
     return next();
 }
 
-export function setIdentity(req: Interface.IOurRequest, identity: blpapi.Identity): void
+export function setIdentity(req: Interface.IOurRequest, identity: blpapi.IIdentity): void
 {
     if (!_.has(req, 'clientCert')) {
         throw new Error('Cannot setIdentity without a client cert');
