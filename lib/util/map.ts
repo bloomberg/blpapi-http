@@ -1,10 +1,11 @@
 /// <reference path='../../typings/tsd.d.ts' />
 
 import _ = require('lodash');
+import interfaces = require('../interface');
 
 export = Map;
 
-class Map<T> {
+class Map<T> implements interfaces.IMap<T> {
     private _size: number = 0;
     protected _map: {[key: string]: T} = {};
 

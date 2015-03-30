@@ -7,7 +7,6 @@ import validator = require('express-validator');
 import sio = require('socket.io');
 import webSocket = require('ws');
 import conf = require('./config');
-import Interface = require('./interface');
 import auth = require('./middleware/auth');
 import blpSession = require('./middleware/blp-session');
 import requestHandler = require('./middleware/request-handler');
