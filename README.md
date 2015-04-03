@@ -1,5 +1,6 @@
 blpapi-http
 ===========
+[![Build Status](https://travis-ci.org/bloomberg/blpapi-http.svg?branch=develop)](https://travis-ci.org/bloomberg/blpapi-http)
 
 HTTP wrapper for [Bloomberg Open API].
 
