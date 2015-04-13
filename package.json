@@ -48,6 +48,8 @@
     "Eric N. Vander Weele <ericvw@gmail.com>"
   ],
   "license": "MIT",
+  "engines": { "node": ">=0.12" },
+  "engineStrict": true,
   "bugs": {
     "url": "http://github.com/bloomberg/blpapi-http/issues"
   },
