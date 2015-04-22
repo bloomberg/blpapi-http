@@ -136,8 +136,9 @@ describe('Subscription-socket-io', (): void => {
             });
             it('should emit 1 subscription data', (done: Function): void => {
                 var counter: number = 0;
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketDataEvents');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
                 });
 
                 socket.emit('subscribe',
@@ -152,10 +153,13 @@ describe('Subscription-socket-io', (): void => {
             });
             it('should emit 3 consecutive subscription data', (done: Function): void => {
                 var counter: number = 0;
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketDataEvents');
-                    ipc.emit('subscription-MarketDataEvents');
-                    ipc.emit('subscription-MarketDataEvents');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
                 });
 
                 socket.emit('subscribe',
@@ -172,11 +176,11 @@ describe('Subscription-socket-io', (): void => {
             it('should emit 1 subscription data then another', (done: Function): void => {
                 var cid: number;
                 var counter: number = 0;
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    cid = subscriptions[0].correlation;
-                    ipc.emit('subscription-MarketDataEvents');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    cid = correlationIds[0];
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
                 });
-
 
                 socket.emit('subscribe',
                             [
@@ -185,7 +189,7 @@ describe('Subscription-socket-io', (): void => {
                 socket.on('data', (data: any): void => {
                     ++counter;
                     if (counter === 1) {
-                        ipc.emit('subscription-MarketDataEvents');
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents', cid));
                     } else if (counter === 2) {
                         done();
                     }
@@ -193,10 +197,13 @@ describe('Subscription-socket-io', (): void => {
             });
             it('should emit 1 subscription data for each event', (done: Function): void => {
                 var counter: number = 0;
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketBarStart');
-                    ipc.emit('subscription-MarketBarStart');
-                    ipc.emit('subscription-MarketBarStart');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketBarStart',
+                                         correlationIds[0]));
+                    ipc.emit(util.format('subscription-%d-MarketBarUpdate',
+                                         correlationIds[0]));
+                    ipc.emit(util.format('subscription-%d-MarketBarEnd',
+                                         correlationIds[0]));
                 });
 
                 socket.emit('subscribe',
@@ -213,15 +220,17 @@ describe('Subscription-socket-io', (): void => {
             it('should emit 1 data for each subscription', (done: Function): void => {
                 var counter: number = 0;
                 var cids: number[] = [];
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketBarStart');
-                    ipc.emit('subscription-MarketBarStart');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[1]));
                 });
 
                 socket.emit('subscribe',
                             [
-                                { security: '//blp/mktbar', correlationId: 0, fields: ['P'] },
-                                { security: '//blp/mktbar', correlationId: 1, fields: ['P'] }
+                                { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                                { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
                             ]
                 );
                 socket.on('data', (data: any): void => {
@@ -234,14 +243,16 @@ describe('Subscription-socket-io', (): void => {
             });
             it('should emit 2 data for only one subscription', (done: Function): void => {
                 var counter: number = 0;
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketDataEvents');
-                    ipc.emit('subscription-MarketDataEvents');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[1]));
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[1]));
                 });
 
                 socket.emit('subscribe',
                             [
-                                { security: '//blp/mktbar', correlationId: 0, fields: ['P'] },
+                                { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
                                 { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
                             ]
                 );
@@ -253,8 +264,9 @@ describe('Subscription-socket-io', (): void => {
                 });
             });
             it('should allow subsequent subscriptions', (done: Function): void => {
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketDataEvents');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
                 });
 
                 socket.emit('subscribe',
@@ -264,13 +276,14 @@ describe('Subscription-socket-io', (): void => {
                 );
                 socket.once('data', (data: any): void => {
                     data.correlationId.should.be.a.Number.and.equal(0);
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketBarStart');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
                     });
                     socket.emit('subscribe',
                                 [
                                     {
-                                        security: '//blp/mktbar',
+                                        security: '//blp/mktdata',
                                         correlationId: 1,
                                         fields: ['P']
                                     }
@@ -378,9 +391,9 @@ describe('Subscription-socket-io', (): void => {
             it('should unsubscribe part if one correlationIds', (done: Function): void => {
                 var cids: number[] = [];
                 var counter: number = 0;
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    cids.push(subscriptions[0].correlation);
-                    cids.push(subscriptions[1].correlation);
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    cids.push(correlationIds[0]);
+                    cids.push(correlationIds[1]);
                 });
                 socket.emit('subscribe',
                             [
@@ -392,7 +405,7 @@ describe('Subscription-socket-io', (): void => {
                     socket.emit('unsubscribe', { correlationIds: [0] });
                 });
                 socket.on('unsubscribed', (): void => {
-                    ipc.emit('subscription-MarketDataEvents');
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents', cids[1]));
                 });
                 socket.on('data', (data: any): void => {
                     data.correlationId.should.be.a.Number.and.equal(1);
@@ -403,10 +416,13 @@ describe('Subscription-socket-io', (): void => {
             });
             it('should send 3 data then unsubscribe', (done: Function): void => {
                 var counter: number = 0;
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketDataEvents');
-                    ipc.emit('subscription-MarketDataEvents');
-                    ipc.emit('subscription-MarketDataEvents');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
                 });
 
                 socket.emit('subscribe',

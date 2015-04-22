@@ -229,9 +229,6 @@ function onSubscribe(req: Interface.IOurRequest,
     if (req.identity) {
         args.push(req.identity);
     }
-    if (req.label) {
-        args.push(req.label);
-    }
     // Subscribe user request through blpapi-node API.
     req.blpSession.subscribe.apply(req.blpSession, args)
         .then((): void => {
@@ -333,8 +330,7 @@ function onGetToken(req: Interface.IOurRequest,
                     next: restify.Next): void
 {
     req.blpSession.authenticate().then((token: string): void => {
-        res.sendChunk(token);
-        res.sendEnd(0, 'OK');
+        res.sendWhole(0, 'OK', null /* properties */, token);
         return next();
     }).catch((err: Error): void => {
         return next(res.sendError(err));
@@ -345,15 +341,22 @@ function onAuthorize(req: Interface.IOurRequest,
                      res: Interface.IOurResponse,
                      next: restify.Next): void
 {
-    if (!_.has(req, 'clientCert')) {
+    // Validate authorization request.
+    var errorString: string = null;
+    var token = req.header('blpapi-token');
+    if (!token || token.length === 0) {
+        errorString = 'Authorizing requires a "blpapi-token" in the request header.';
+    } else if (!_.has(req, 'clientCert')) {
         // We currently use the clientCert as the key when managing identities, so authorization
         // requests require you to have one.
-        var errorString = 'Authorizing requires a client cert';
+        errorString = 'Authorizing requires a client cert';
+    }
+    if (errorString) {
         req.log.debug(errorString);
         return next(new restify.BadRequestError(errorString));
     }
 
-    req.blpSession.authorize(req.body).
+    req.blpSession.authorize(token).
         then((identity: blpapi.IIdentity): void => {
             auth.setIdentity(req, identity);
             res.sendWhole(0, 'OK');
@@ -490,12 +493,9 @@ export function onRequest(req: Interface.IOurRequest,
                 req.query.type,
                 req.body];
 
-    // Append optional arguments (identity, label and callback).
+    // Append optional arguments (identity and callback).
     if (req.identity) {
         args.push(req.identity);
-    }
-    if (req.label) {
-        args.push(req.label);
     }
     args.push((err: Error, data?: any, last?: boolean): void =>
               {

@@ -52,7 +52,6 @@ export interface IOurRequest extends restify.Request {
     blpSession: BAPI.Session;
     apiSession?: IAPISession;
     identity?: BAPI.IIdentity;
-    label?: string;
 }
 
 export interface IOurResponse extends restify.Response {

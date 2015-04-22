@@ -239,7 +239,7 @@ describe('Subscription-longpoll', (): void => {
                     done();
                 });
             });
-            it('should unsubsribe if session expired', function(done: Function): void {
+            it('should unsubscribe if session expired', function(done: Function): void {
                 var EXPECTED_TIMEOUT: number = 4000;
                 ipc.off('wait-to-openService');
                 this.timeout(EXPECTED_TIMEOUT + 100);
@@ -260,11 +260,11 @@ describe('Subscription-longpoll', (): void => {
                     setTimeout(tmp, EXPECTED_TIMEOUT);
                 });
                 var cid: number;
-                ipc.once('wait-to-subscribe', (data: any): void => {
-                    cid = data[0].correlation;
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    cid = correlationIds[0];
                 });
-                ipc.on('wait-to-unsubscribe', (data: any): void => {
-                    if (data[0].correlation === cid) {
+                ipc.on('wait-to-unsubscribe', (correlationIds: number[]): void => {
+                    if (correlationIds[0] === cid) {
                         ipc.off('wait-to-unsubscribe');
                         ipc.on('wait-to-openService', (data: any): void => {
                             ipc.emit(util.format('openService-%d-success', data.cid));
@@ -366,8 +366,9 @@ describe('Subscription-longpoll', (): void => {
             });
             describe('one subscription', (): void => {
                 it('should poll one data back if data already arrives', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketDataEvents');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -400,10 +401,13 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should poll three data back', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketDataEvents');
-                        ipc.emit('subscription-MarketDataEvents');
-                        ipc.emit('subscription-MarketDataEvents');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -436,11 +440,15 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should poll three data back with one missed ticks', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketDataEvents');
-                        ipc.emit('subscription-MarketDataEvents');
-                        ipc.emit('subscription-MarketDataEvents');
-                        ipc.emit('subscription-MarketDataEvents');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -474,8 +482,8 @@ describe('Subscription-longpoll', (): void => {
                 });
                 it('should poll one data back if data arrives after', (done: Function): void => {
                     var cid: number;
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        cid = subscriptions[0].correlation;
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        cid = correlationIds[0];
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -488,7 +496,7 @@ describe('Subscription-longpoll', (): void => {
                     request.post(opt, (error: Error, response: any, body: any): void => {
                         setTimeout(
                             (): void => {
-                                ipc.emit('subscription-MarketDataEvents');
+                                ipc.emit(util.format('subscription-%d-MarketDataEvents', cid));
                             },
                             500
                         );
@@ -515,9 +523,9 @@ describe('Subscription-longpoll', (): void => {
                 });
                 it('should poll one data back then another', (done: Function): void => {
                     var cid: number;
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        cid = subscriptions[0].correlation;
-                        ipc.emit('subscription-MarketDataEvents');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        cid = correlationIds[0];
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents', cid));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -546,8 +554,8 @@ describe('Subscription-longpoll', (): void => {
                             body.data[0][0].missed_ticks.should.be.a.Number.and.equal(0);
                             body.data[0][0].data.should.eql(['TestData']);
 
-                            ipc.emit('subscription-MarketDataEvents');
-                            ipc.emit('subscription-MarketDataEvents');
+                            ipc.emit(util.format('subscription-%d-MarketDataEvents', cid));
+                            ipc.emit(util.format('subscription-%d-MarketDataEvents', cid));
                             opt.url = HOST + '/subscription?pollid=1';
                             request.get(opt, (error: Error, response: any, body: any): void => {
                                 should.ifError(error);
@@ -567,8 +575,9 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should be able to poll back last data', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketDataEvents');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -615,8 +624,9 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should fail with 409 if poll id is not contiguous', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketDataEvents');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -656,8 +666,9 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should fail with 409 if poll id is old', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketDataEvents');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -722,8 +733,8 @@ describe('Subscription-longpoll', (): void => {
                 });
                 it('should be able to poll again after time out', (done: Function): void => {
                     var cid: number;
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        cid = subscriptions[0].correlation;
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        cid = correlationIds[0];
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
@@ -740,7 +751,7 @@ describe('Subscription-longpoll', (): void => {
                             agentOptions: aOpts
                         };
                         request.get(opt, (error: Error, response: any, body: any): void => {
-                            ipc.emit('subscription-MarketDataEvents');
+                            ipc.emit(util.format('subscription-%d-MarketDataEvents', cid));
                             request.get(opt, (error: Error, response: any, body: any): void => {
                                 should.ifError(error);
                                 response.statusCode.should.be.a.Number.and.equal(200);
@@ -760,18 +771,22 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
 
-            describe('two subscription', (): void => {
+            describe('two subscriptions', (): void => {
                 it('should poll one data back for each subscription', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketDataEvents');
-                        ipc.emit('subscription-MarketBarStart');
-                        ipc.emit('subscription-MarketBarStart');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[1]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[1]));
+
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
                             { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                            { security: '//blp/mktbar', correlationId: 1, fields: ['P'] }
+                            { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
                         ],
                         json: true,
                         agentOptions: aOpts
@@ -802,15 +817,17 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should poll one data back for 1st subscription', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketDataEvents');
-                        ipc.emit('subscription-MarketDataEvents');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
                             { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                            { security: '//blp/mktbar', correlationId: 1, fields: ['P'] }
+                            { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
                         ],
                         json: true,
                         agentOptions: aOpts
@@ -838,15 +855,17 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should poll one data back for last subscription', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        ipc.emit('subscription-MarketBarStart');
-                        ipc.emit('subscription-MarketBarStart');
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[1]));
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                             correlationIds[1]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
                             { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                            { security: '//blp/mktbar', correlationId: 1, fields: ['P'] }
+                            { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
                         ],
                         json: true,
                         agentOptions: aOpts
@@ -1115,11 +1134,14 @@ describe('Subscription-longpoll', (): void => {
             });
             it('should unsubscribe part if one cid', (done: Function): void => {
                 var cid: number;
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    cid = correlationIds[0];
+                });
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
                     body: [
                         { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                        { security: '//blp/mktbar', correlationId: 1, fields: ['P'] }
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
                     ],
                     json: true,
                     agentOptions: aOpts
@@ -1142,7 +1164,7 @@ describe('Subscription-longpoll', (): void => {
                             json: true,
                             agentOptions: aOpts
                         };
-                        ipc.emit('subscription-MarketDataEvents');
+                        ipc.emit(util.format('subscription-%d-MarketDataEvents', cid));
                         request.get(opt, (error: Error, response: any, body: any): void => {
                             should.ifError(error);
                             response.statusCode.should.be.a.Number.and.equal(200);
@@ -1161,15 +1183,17 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
             it('should unsubscribe with buffered data', (done: Function): void => {
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketDataEvents');
-                    ipc.emit('subscription-MarketBarStart');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[1]));
                 });
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
                     body: [
                         { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                        { security: '//blp/mktbar', correlationId: 1, fields: ['P'] }
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
                     ],
                     json: true,
                     agentOptions: aOpts
@@ -1201,8 +1225,9 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
             it('should reset poll id after unsubscribe all', (done: Function): void => {
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    ipc.emit('subscription-MarketDataEvents');
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                         correlationIds[0]));
                 });
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
@@ -1234,8 +1259,9 @@ describe('Subscription-longpoll', (): void => {
                     })
                 // resubscribe
                     .then((): void => {
-                        ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                            ipc.emit('subscription-MarketDataEvents');
+                        ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                            ipc.emit(util.format('subscription-%d-MarketDataEvents',
+                                                 correlationIds[0]));
                         });
                         opt = {
                             url: HOST + '/subscription?action=start',

@@ -13,7 +13,9 @@ export interface ISessionOpts extends blpapi.ISessionOpts {}
 export interface IIdentity extends blpapi.IIdentity {}
 export interface IRequestCallback extends blpapi.IRequestCallback {}
 export interface ISession extends blpapi.ISession {}
-export class Subscription extends blpapi.Subscription {}
+export class Subscription extends blpapi.Subscription {
+    correlationId: number;
+}
 export class BlpApiError extends blpapi.BlpApiError {}
 /* tslint:enable:interface-name */
 
@@ -191,13 +193,18 @@ export class Session extends events.EventEmitter implements ISession {
               arg2?: string | ((err: any) => void),
               arg3?: (err: any) => void): Promise<void>
     {
+        // For subscribe, only communicate via ipc is supported
+        ipc.emit('wait-to-subscribe',
+                 subs.map((sub: Subscription): number => {
+                     return sub.correlationId;
+                 }));
+
         var cb: (err: any) => void = undefined;
         if (typeof arguments[arguments.length - 1] === 'function') {
            cb = arguments[arguments.length - 1];
         }
+
         return new Promise<void>((resolve: Function, reject: Function): void => {
-            // For subscribe, only communicate via ipc is supported
-            ipc.emit('wait-to-subscribe', subs);
 
             var hasInvalidServiceUri = subs.some((sub: Subscription): boolean => {
                 var serviceUri = getServiceForSecurity(sub.security);
@@ -211,13 +218,10 @@ export class Session extends events.EventEmitter implements ISession {
                 return;
             }
             subs.forEach((sub: Subscription): void => {
-                var cid = _.findKey(subs, (other: Subscription): boolean => {
-                    return sub === other;
-                });
                 var serviceUri = getServiceForSecurity(sub.security);
                 var events: string[] = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri];
                 _.forEach(events, (e: string): void => {
-                    ipc.on(util.format('subscription-%s', e), (): void => {
+                    ipc.on(util.format('subscription-%d-%s', sub.correlationId, e), (): void => {
                         this.sendSubscriptionData(e, sub);
                     });
                 });
@@ -228,7 +232,10 @@ export class Session extends events.EventEmitter implements ISession {
 
     unsubscribe(subs: Subscription[]): void {
         // As long as we no longer send data event via ipc for unsubscribed cids, no-ops
-        ipc.emit('wait-to-unsubscribe', subs);
+        ipc.emit('wait-to-unsubscribe',
+                 subs.map((sub: Subscription): number => {
+                     return sub.correlationId;
+                 }));
     }
 
     request(uri: string,
@@ -283,7 +290,7 @@ export class Session extends events.EventEmitter implements ISession {
                              (s: string, i: number, length: number): boolean => {
                     assert('sendPartialRequestData' === s || 'sendFinalRequestData' === s,
                            'Invalid operation ' + s);
-                    this[s].call(this, responseName, cid);
+                    this[s].call(this, responseName, callback, cid);
                     return true;
                 });
             }

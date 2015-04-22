@@ -40,13 +40,11 @@ function createSession(sessionId: string): Promise<blpapi.Session>
                 return s.authenticate().then(s.authorize);
             }).return(s);
         }
-        p.catch((err: Error): any => {  // Use any to make ts happy
+        SESSION_STORE[sessionId] = p.catch((err: Error): any => {  // Use any to make ts happy
             delete SESSION_STORE[sessionId];
             LOGGER.error(err, 'blpSession connection error.');
             throw err;
         });
-
-        SESSION_STORE[sessionId] = p;
     }
 
     return SESSION_STORE[sessionId];
