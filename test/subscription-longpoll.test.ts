@@ -97,9 +97,9 @@ describe('Subscription-longpoll', (): void => {
                 var opt: any = {
                     url: HOST + '/subscription',
                     body: [
-                            { security: 'A', correlationId: 0, fields: ['P'] },
-                            { security: 'G', correlationId: 1, fields: ['P'] }
-                          ],
+                        { security: 'A', correlationId: 0, fields: ['P'] },
+                        { security: 'G', correlationId: 1, fields: ['P'] }
+                    ],
                     json: true,
                     agentOptions: aOpts
                 };
@@ -220,137 +220,62 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
 
-            describe('service open failure', (): void => {
-                before((): void => {
-                    ipc.on('wait-to-openService', (data: any): void => {
-                        if ('//blp/mktdata' === data.uri) {
-                            ipc.emit(util.format('openService-%d-fail', data.cid));
-                        } else {
-                            ipc.emit(util.format('openService-%d-success', data.cid));
-                        }
-                    });
-                });
-
-                after((): void => {
-                    ipc.off('wait-to-openService');
-                });
-
-                it('should fail with 500 if services cannot be opened', (done: Function): void => {
-                    var opt: any = {
-                        url: HOST + '/subscription?action=start',
-                        body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
-                        json: true,
-                        agentOptions: aOpts
-                    };
-                    request.post(opt, (error: Error, response: any, body: any): void => {
-                        should.ifError(error);
-                        response.statusCode.should.be.a.Number.and.equal(500);
-                        body.message.should.be.a.String
-                            .and.equal('//blp/mktdata Service Fail to Open.');
-                        done();
-                    });
-                });
-                it('should fail with 500 if service cannot be opened', (done: Function): void => {
-                    var opt: any = {
-                        url: HOST + '/subscription?action=start',
-                        body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktvwap', correlationId: 1, fields: ['P'] }
-                              ],
-                        json: true,
-                        agentOptions: aOpts
-                    };
-                    request.post(opt, (error: Error, response: any, body: any): void => {
-                        should.ifError(error);
-                        response.statusCode.should.be.a.Number.and.equal(500);
-                        body.message.should.be.a.String
-                            .and.equal('//blp/mktdata Service Fail to Open.');
-                        done();
-                    });
+            it('should succeed with 200 if session is not expired', (done: Function): void => {
+                var opt: any = {
+                    url: HOST + '/subscription?action=start',
+                    body: [
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                    ],
+                    json: true,
+                    agentOptions: aOpts
+                };
+                request.post(opt, (error: Error, response: any, body: any): void => {
+                    should.ifError(error);
+                    response.statusCode.should.be.a.Number.and.equal(200);
+                    body.message.should.be.a.String.and.equal('Subscribed');
+                    body.status.should.be.a.Number.and.equal(0);
+                    body.correlationIds.sort().should.be.an.Array.and.eql([0, 1]);
+                    done();
                 });
             });
-
-            describe('service open successfully', (): void => {
-                before((): void => {
-                    ipc.on('wait-to-openService', (data: any): void => {
+            it('should unsubscribe if session expired', function(done: Function): void {
+                var EXPECTED_TIMEOUT: number = 4000;
+                ipc.off('wait-to-openService');
+                this.timeout(EXPECTED_TIMEOUT + 100);
+                var opt: any = {
+                    url: HOST + '/subscription?action=start',
+                    body: [
+                        { security: '//blp/pagedata', correlationId: 0, fields: ['P'] }
+                    ],
+                    json: true,
+                    agentOptions: aOpts,
+                };
+                var r = request.post(opt);
+                ipc.once('wait-to-openService', (data: any): void => {
+                    function tmp(): void {
                         ipc.emit(util.format('openService-%d-success', data.cid));
-                    });
+                    }
+                    r.abort();
+                    setTimeout(tmp, EXPECTED_TIMEOUT);
                 });
-
-                after((): void => {
-                    ipc.off('wait-to-openService');
+                var cid: number;
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    cid = correlationIds[0];
                 });
-
-                it('should succeed with 200 if session is not expired', (done: Function): void => {
-                    var opt: any = {
-                        url: HOST + '/subscription?action=start',
-                        body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                              ],
-                        json: true,
-                        agentOptions: aOpts
-                    };
-                    request.post(opt, (error: Error, response: any, body: any): void => {
-                        should.ifError(error);
-                        response.statusCode.should.be.a.Number.and.equal(200);
-                        body.message.should.be.a.String.and.equal('Subscribed');
-                        body.status.should.be.a.Number.and.equal(0);
-                        body.correlationIds.sort().should.be.an.Array.and.eql([0, 1]);
-                        done();
-                    });
-                });
-                it('should unsubsribe if session expired', function(done: Function): void {
-                    var EXPECTED_TIMEOUT: number = 4000;
-                    ipc.off('wait-to-openService');
-                    this.timeout(EXPECTED_TIMEOUT + 100);
-                    var opt: any = {
-                        url: HOST + '/subscription?action=start',
-                        body: [
-                                  { security: '//blp/pagedata', correlationId: 0, fields: ['P'] }
-                              ],
-                        json: true,
-                        agentOptions: aOpts,
-                    };
-                    var r = request.post(opt);
-                    ipc.once('wait-to-openService', (data: any): void => {
-                        function tmp(): void {
+                ipc.on('wait-to-unsubscribe', (correlationIds: number[]): void => {
+                    if (correlationIds[0] === cid) {
+                        ipc.off('wait-to-unsubscribe');
+                        ipc.on('wait-to-openService', (data: any): void => {
                             ipc.emit(util.format('openService-%d-success', data.cid));
-                        }
-                        r.abort();
-                        setTimeout(tmp, EXPECTED_TIMEOUT);
-                    });
-                    var cid: number;
-                    ipc.once('wait-to-subscribe', (data: any): void => {
-                        cid = data[0].correlation;
-                    });
-                    ipc.on('wait-to-unsubscribe', (data: any): void => {
-                        if (data[0].correlation === cid) {
-                            ipc.off('wait-to-unsubscribe');
-                            ipc.on('wait-to-openService', (data: any): void => {
-                                ipc.emit(util.format('openService-%d-success', data.cid));
-                            });
-                            done();
-                        }
-                    });
+                        });
+                        done();
+                    }
                 });
-
             });
         });
 
         describe('#poll', (): void => {
-            before((): void => {
-                ipc.on('wait-to-openService', (data: any): void => {
-                    ipc.emit(util.format('openService-%d-success', data.cid));
-                });
-            });
-
-            after((): void => {
-                ipc.off('wait-to-openService');
-            });
-
             it('should fail with 400 if missing query param', (done: Function): void => {
                 var opt: any = {
                     url: HOST + '/subscription',
@@ -364,17 +289,17 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
             it('should fail with 400 if poll id is NAN', (done: Function): void => {
-                    var opt: any = {
-                        url: HOST + '/subscription?pollid=abc',
-                        json: true,
-                        agentOptions: aOpts
-                    };
-                    request.get(opt, (error: Error, response: any, body: any): void => {
-                        should.ifError(error);
-                        response.statusCode.should.be.a.Number.and.equal(400);
-                        done();
-                    });
+                var opt: any = {
+                    url: HOST + '/subscription?pollid=abc',
+                    json: true,
+                    agentOptions: aOpts
+                };
+                request.get(opt, (error: Error, response: any, body: any): void => {
+                    should.ifError(error);
+                    response.statusCode.should.be.a.Number.and.equal(400);
+                    done();
                 });
+            });
             it('should fail with 400 if no session created', (done: Function): void => {
                 var opt: any = {
                     url: HOST + '/subscription?pollid=0',
@@ -420,8 +345,8 @@ describe('Subscription-longpoll', (): void => {
                     opt = {
                         url: HOST + '/subscription?pollid=0',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -441,15 +366,15 @@ describe('Subscription-longpoll', (): void => {
             });
             describe('one subscription', (): void => {
                 it('should poll one data back if data already arrives', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -476,19 +401,19 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should poll three data back', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -515,21 +440,21 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should poll three data back with one missed ticks', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -557,14 +482,14 @@ describe('Subscription-longpoll', (): void => {
                 });
                 it('should poll one data back if data arrives after', (done: Function): void => {
                     var cid: number;
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        cid = subscriptions[0].correlation;
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        cid = correlationIds[0];
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -598,15 +523,15 @@ describe('Subscription-longpoll', (): void => {
                 });
                 it('should poll one data back then another', (done: Function): void => {
                     var cid: number;
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        cid = subscriptions[0].correlation;
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        cid = correlationIds[0];
                         ipc.emit(util.format('subscription-%d-MarketDataEvents', cid));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -650,15 +575,15 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should be able to poll back last data', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -699,15 +624,15 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should fail with 409 if poll id is not contiguous', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -741,15 +666,15 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should fail with 409 if poll id is old', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -786,8 +711,8 @@ describe('Subscription-longpoll', (): void => {
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -808,14 +733,14 @@ describe('Subscription-longpoll', (): void => {
                 });
                 it('should be able to poll again after time out', (done: Function): void => {
                     var cid: number;
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                        cid = subscriptions[0].correlation;
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                        cid = correlationIds[0];
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -846,22 +771,23 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
 
-            describe('two subscription', (): void => {
+            describe('two subscriptions', (): void => {
                 it('should poll one data back for each subscription', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[1].correlation));
+                                             correlationIds[1]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[1].correlation));
+                                             correlationIds[1]));
+
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                            { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -891,18 +817,18 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should poll one data back for 1st subscription', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[0].correlation));
+                                             correlationIds[0]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                            { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -929,18 +855,18 @@ describe('Subscription-longpoll', (): void => {
                     });
                 });
                 it('should poll one data back for last subscription', (done: Function): void => {
-                    ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                    ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[1].correlation));
+                                             correlationIds[1]));
                         ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                             subscriptions[1].correlation));
+                                             correlationIds[1]));
                     });
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                            { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -970,16 +896,6 @@ describe('Subscription-longpoll', (): void => {
         });
 
         describe('#unsubscribe', (): void => {
-            before((): void => {
-                ipc.on('wait-to-openService', (data: any): void => {
-                    ipc.emit(util.format('openService-%d-success', data.cid));
-                });
-            });
-
-            after((): void => {
-                ipc.off('wait-to-openService');
-            });
-
             it('should fail with 400 if missing query param', (done: Function): void => {
                 var opt: any = {
                     url: HOST + '/subscription',
@@ -993,17 +909,17 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
             it('should fail with 400 if query param is invalid', (done: Function): void => {
-                    var opt: any = {
-                        url: HOST + '/subscription?action=stp',
-                        json: true,
-                        agentOptions: aOpts
-                    };
-                    request.post(opt, (error: Error, response: any, body: any): void => {
-                        should.ifError(error);
-                        response.statusCode.should.be.a.Number.and.equal(400);
-                        done();
-                    });
+                var opt: any = {
+                    url: HOST + '/subscription?action=stp',
+                    json: true,
+                    agentOptions: aOpts
+                };
+                request.post(opt, (error: Error, response: any, body: any): void => {
+                    should.ifError(error);
+                    response.statusCode.should.be.a.Number.and.equal(400);
+                    done();
                 });
+            });
             it('should fail with 400 if no session created', (done: Function): void => {
                 var opt: any = {
                     url: HOST + '/subscription?action=stop',
@@ -1039,9 +955,9 @@ describe('Subscription-longpoll', (): void => {
                     var opt: any = {
                         url: HOST + '/subscription?action=start',
                         body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                              ],
+                            { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                            { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                        ],
                         json: true,
                         agentOptions: aOpts
                     };
@@ -1062,92 +978,94 @@ describe('Subscription-longpoll', (): void => {
                 });
                 it('should fail with 409 if correlationId is not array',
                    (done: Function): void => {
-                    var opt: any = {
-                        url: HOST + '/subscription?action=start',
-                        body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                              ],
-                        json: true,
-                        agentOptions: aOpts
-                    };
-                    request.post(opt, (error: Error, response: any, body: any): void => {
-                        opt = {
-                            url: HOST + '/subscription?action=stop',
-                            body: { correlationIds: 1 },
-                            json: true,
-                            agentOptions: aOpts
-                        };
-                        request.post(opt, (error: Error, response: any, body: any): void => {
-                            should.ifError(error);
-                            response.statusCode.should.be.a.Number.and.equal(409);
-                            body.message.should.be.a.String.and.equal('Invalid unsubscribe data.');
-                            done();
-                        });
-                    });
-                });
+                       var opt: any = {
+                           url: HOST + '/subscription?action=start',
+                           body: [
+                               { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                               { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                           ],
+                           json: true,
+                           agentOptions: aOpts
+                       };
+                       request.post(opt, (error: Error, response: any, body: any): void => {
+                           opt = {
+                               url: HOST + '/subscription?action=stop',
+                               body: { correlationIds: 1 },
+                               json: true,
+                               agentOptions: aOpts
+                           };
+                           request.post(opt, (error: Error, response: any, body: any): void => {
+                               should.ifError(error);
+                               response.statusCode.should.be.a.Number.and.equal(409);
+                               body.message.should.be.a.String.
+                                   and.equal('Invalid unsubscribe data.');
+                               done();
+                           });
+                       });
+                   });
                 it('should fail with 409 if correlationIds is a empty array',
                    (done: Function): void => {
-                    var opt: any = {
-                        url: HOST + '/subscription?action=start',
-                        body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                              ],
-                        json: true,
-                        agentOptions: aOpts
-                    };
-                    request.post(opt, (error: Error, response: any, body: any): void => {
-                        opt = {
-                            url: HOST + '/subscription?action=stop',
-                            body: { correlationIds: [] },
-                            json: true,
-                            agentOptions: aOpts
-                        };
-                        request.post(opt, (error: Error, response: any, body: any): void => {
-                            should.ifError(error);
-                            response.statusCode.should.be.a.Number.and.equal(409);
-                            body.message.should.be.a.String.and.equal('Invalid unsubscribe data.');
-                            done();
-                        });
-                    });
-                });
+                       var opt: any = {
+                           url: HOST + '/subscription?action=start',
+                           body: [
+                               { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                               { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                           ],
+                           json: true,
+                           agentOptions: aOpts
+                       };
+                       request.post(opt, (error: Error, response: any, body: any): void => {
+                           opt = {
+                               url: HOST + '/subscription?action=stop',
+                               body: { correlationIds: [] },
+                               json: true,
+                               agentOptions: aOpts
+                           };
+                           request.post(opt, (error: Error, response: any, body: any): void => {
+                               should.ifError(error);
+                               response.statusCode.should.be.a.Number.and.equal(409);
+                               body.message.should.be.a.String.
+                                   and.equal('Invalid unsubscribe data.');
+                               done();
+                           });
+                       });
+                   });
                 it('should fail with 409 if some correlationIds are invalid',
                    (done: Function): void => {
-                    var opt: any = {
-                        url: HOST + '/subscription?action=start',
-                        body: [
-                                  { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                                  { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                              ],
-                        json: true,
-                        agentOptions: aOpts
-                    };
-                    request.post(opt, (error: Error, response: any, body: any): void => {
-                        opt = {
-                            url: HOST + '/subscription?action=stop',
-                            body: { correlationIds: [2] },
-                            json: true,
-                            agentOptions: aOpts
-                        };
-                        request.post(opt, (error: Error, response: any, body: any): void => {
-                            should.ifError(error);
-                            response.statusCode.should.be.a.Number.and.equal(409);
-                            body.message.should.be.a.String
-                                .and.equal('Invalid correlation Id 2 received.');
-                            done();
-                        });
-                    });
-                });
+                       var opt: any = {
+                           url: HOST + '/subscription?action=start',
+                           body: [
+                               { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                               { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                           ],
+                           json: true,
+                           agentOptions: aOpts
+                       };
+                       request.post(opt, (error: Error, response: any, body: any): void => {
+                           opt = {
+                               url: HOST + '/subscription?action=stop',
+                               body: { correlationIds: [2] },
+                               json: true,
+                               agentOptions: aOpts
+                           };
+                           request.post(opt, (error: Error, response: any, body: any): void => {
+                               should.ifError(error);
+                               response.statusCode.should.be.a.Number.and.equal(409);
+                               body.message.should.be.a.String
+                                   .and.equal('Invalid correlation Id 2 received.');
+                               done();
+                           });
+                       });
+                   });
             });
 
             it('should unsubscribe all if body is empty', (done: Function): void => {
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
                     body: [
-                              { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                              { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                          ],
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                    ],
                     json: true,
                     agentOptions: aOpts
                 };
@@ -1181,9 +1099,9 @@ describe('Subscription-longpoll', (): void => {
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
                     body: [
-                              { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                              { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                          ],
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                    ],
                     json: true,
                     agentOptions: aOpts
                 };
@@ -1216,15 +1134,15 @@ describe('Subscription-longpoll', (): void => {
             });
             it('should unsubscribe part if one cid', (done: Function): void => {
                 var cid: number;
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
-                    cid = subscriptions[0].correlation;
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
+                    cid = correlationIds[0];
                 });
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
                     body: [
-                              { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                              { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                          ],
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                    ],
                     json: true,
                     agentOptions: aOpts
                 };
@@ -1265,18 +1183,18 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
             it('should unsubscribe with buffered data', (done: Function): void => {
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                     ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                         subscriptions[0].correlation));
+                                         correlationIds[0]));
                     ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                         subscriptions[1].correlation));
+                                         correlationIds[1]));
                 });
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
                     body: [
-                              { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
-                              { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
-                          ],
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] },
+                        { security: '//blp/mktdata', correlationId: 1, fields: ['P'] }
+                    ],
                     json: true,
                     agentOptions: aOpts
                 };
@@ -1307,21 +1225,21 @@ describe('Subscription-longpoll', (): void => {
                 });
             });
             it('should reset poll id after unsubscribe all', (done: Function): void => {
-                ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                     ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                         subscriptions[0].correlation));
+                                         correlationIds[0]));
                 });
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
                     body: [
-                              { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                          ],
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                    ],
                     json: true,
                     agentOptions: aOpts
                 };
                 // Subscribe
                 (Promise.promisify(request.post))(opt)
-                    // poll
+                // poll
                     .then((): void => {
                         opt = {
                             url: HOST + '/subscription?pollid=3',
@@ -1330,7 +1248,7 @@ describe('Subscription-longpoll', (): void => {
                         };
                         return (Promise.promisify(request.get))(opt);
                     })
-                    // unsubscribe
+                // unsubscribe
                     .then((): void => {
                         opt = {
                             url: HOST + '/subscription?action=stop',
@@ -1339,23 +1257,23 @@ describe('Subscription-longpoll', (): void => {
                         };
                         return (Promise.promisify(request.post))(opt);
                     })
-                    // resubscribe
+                // resubscribe
                     .then((): void => {
-                        ipc.once('wait-to-subscribe', (subscriptions: any): void => {
+                        ipc.once('wait-to-subscribe', (correlationIds: number[]): void => {
                             ipc.emit(util.format('subscription-%d-MarketDataEvents',
-                                                 subscriptions[0].correlation));
+                                                 correlationIds[0]));
                         });
                         opt = {
                             url: HOST + '/subscription?action=start',
                             body: [
-                                      { security: 'A', correlationId: 0, fields: ['P'] }
-                                  ],
+                                { security: 'A', correlationId: 0, fields: ['P'] }
+                            ],
                             json: true,
                             agentOptions: aOpts
                         };
                         return (Promise.promisify(request.post))(opt);
                     })
-                    // poll
+                // poll
                     .then((): void => {
                         opt = {
                             url: HOST + '/subscription?pollid=0',
@@ -1364,7 +1282,7 @@ describe('Subscription-longpoll', (): void => {
                         };
                         return (Promise.promisify(request.get))(opt);
                     })
-                    // verify
+                // verify
                     .then((data: any): void => {
                         data[0].statusCode.should.be.a.Number.and.equal(200);
                         data[0].headers.should.have.property('content-type')
@@ -1389,8 +1307,8 @@ describe('Subscription-longpoll', (): void => {
                 var opt: any = {
                     url: HOST + '/subscription?action=start',
                     body: [
-                              { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
-                          ],
+                        { security: '//blp/mktdata', correlationId: 0, fields: ['P'] }
+                    ],
                     json: true,
                     agentOptions: aOpts
                 };

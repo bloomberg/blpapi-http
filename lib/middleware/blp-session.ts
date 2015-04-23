@@ -3,7 +3,7 @@
 import Promise = require('bluebird');
 import bunyan = require('bunyan');
 import restify = require('restify');
-import blpapi = require('../blpapi-wrapper');
+import blpapi = require('blpapi');
 import conf = require('../config');
 import interfaces = require('../interface');
 
@@ -25,7 +25,7 @@ function createSession(sessionId: string): Promise<blpapi.Session>
             .then((): void => {
                 LOGGER.info('blpSession created and connected.');
                 s.once('SessionTerminated', (): void => {
-                    LOGGER.info('blpSession termintated.');
+                    LOGGER.info('blpSession terminated.');
                     delete SESSION_STORE[sessionId];
                 });
                 // Close the blpSession when config changes
@@ -33,22 +33,18 @@ function createSession(sessionId: string): Promise<blpapi.Session>
                     LOGGER.info('Server Config ' + config + ' changes. Stop blpSession.');
                     s.stop();
                 });
-            });
+            }).return(s);
         // We don't chain this promise to avoid the empty tick when authorizeOnStartup is false.
         if (sessionOptions.authorizeOnStartup) {
-            p = p.then((): Promise<void> => {
-                return s.authorize();
-            });
+            p = p.then((): Promise<blpapi.IIdentity> => {
+                return s.authenticate().then(s.authorize);
+            }).return(s);
         }
-        // p.return is changing the type of the promise, so we can't store it in the same variable.
-        var p2 = p.return(s);
-        p2.catch((err: Error): any => {  // Use any to make ts happy
+        SESSION_STORE[sessionId] = p.catch((err: Error): any => {  // Use any to make ts happy
             delete SESSION_STORE[sessionId];
             LOGGER.error(err, 'blpSession connection error.');
             throw err;
         });
-
-        SESSION_STORE[sessionId] = p2;
     }
 
     return SESSION_STORE[sessionId];

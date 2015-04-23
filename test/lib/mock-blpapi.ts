@@ -9,15 +9,19 @@ import blpapi = require('blpapi');
 
 // Re-export blpapi public interfaces
 /* tslint:disable:interface-name */
-export interface SessionOpts extends blpapi.SessionOpts {}
-export interface Subscription extends blpapi.Subscription {}
-export interface Identity extends blpapi.Identity {}
-/* tslint:enable:interface-name */
+export interface ISessionOpts extends blpapi.ISessionOpts {}
+export interface IIdentity extends blpapi.IIdentity {}
+export interface IRequestCallback extends blpapi.IRequestCallback {}
 export interface ISession extends blpapi.ISession {}
+export class Subscription extends blpapi.Subscription {
+    correlationId: number;
+}
+export class BlpApiError extends blpapi.BlpApiError {}
+/* tslint:enable:interface-name */
+
 
 export interface IInstruction {
     start?: boolean;
-    openService?: boolean;
     stop?: boolean;
     request?: string[];
 
@@ -80,191 +84,220 @@ export class Session extends events.EventEmitter implements ISession {
     // TypeScript compiler needs this to allow "this['property-string']" type of access
     [index: string]: any;
 
+    private correlatorId: number = 0;
+
     // PRIVATE MANIPULATORS
+
+    private nextCorrelatorId(): number {
+        return this.correlatorId++;
+    }
+
     private terminateSession(): void {
         this.emit('SessionTerminated', { data: 'Session Terminated.' });
     }
 
-    private sendSessionStarted(): void {
-        this.emit('SessionStarted', { data: 'Session Started.' });
+    private sendSessionStarted(cb: Function): void {
+        cb();
     }
 
-    private sendSessionStartupFailure(): void {
-        this.emit('SessionStartupFailure', {
-            data: {
-                reason: { description:  'Session Fail to Start.' }
-            }
-        });
+    private sendSessionStartupFailure(cb: Function): void {
+        cb(new BlpApiError(
+            {
+                reason: {
+                    description:  'Session Failed to Start.'
+                }
+            }));
     }
 
-    private sendServiceOpened(cid: number): void {
-        this.emit('ServiceOpened', {
-            correlations: [ { value: cid } ]
-        });
+    private sendPartialRequestData(responseName: string,
+                                   callback: IRequestCallback, cid: number): void {
+        callback(null,
+                 'TestData',
+                 false);
     }
 
-    private sendServiceOpenFailure(uri: string, cid: number): void {
-        this.emit('ServiceOpenFailure', {
-            data: {
-                reason: { description:  uri + ' Service Fail to Open.' }
-            },
-            correlations: [ { value: cid } ]
-        });
+    private sendFinalRequestData(responseName: string,
+                                 callback: IRequestCallback, cid: number): void {
+        callback(null,
+                 'FinalTestData',
+                 true);
     }
 
-    private sendPartialRequestData(responseName: string, cid: number): void {
-        this.emit(responseName, {
-            eventType: 'PARTIAL_RESPONSE',
-            messageType: responseName,
-            correlations: [ { value: cid } ],
-            data: 'TestData'
-        });
-    }
-
-    private sendFinalRequestData(responseName: string, cid: number): void {
-        this.emit(responseName, {
-            eventType: 'RESPONSE',
-            messageType: responseName,
-            correlations: [ { value: cid } ],
-            data: 'FinalTestData'
-        });
-    }
-
-    private sendSubscriptionData(eventName: string, cid: number): void {
-        this.emit(eventName, {
-            correlations: [ { value: cid } ],
-            data: 'TestData'
-        });
-    }
-
-    // Error throwing must be synchronous
-    private throwError(): void {
-        throw new Error('TestError');
+    private sendSubscriptionData(eventName: string, sub: Subscription): void {
+        sub.emit('data', 'TestData');
     }
 
     // CREATORS
-    constructor (args: SessionOpts) {
+    constructor(opts: ISessionOpts) {
         super();
-
         ipc.on('terminate-session', (): void => {
             this.terminateSession();
         });
     }
 
     // MANIPULATORS
-    start(): Session {
-        // If has preset instructions, follow it
-        if (_.has(instructions, 'start')) {
-            process.nextTick((): void => {
+    start(cb?: (err: any, value: any) => void): Promise<void> {
+        return new Promise<void>((resolve: Function, reject: Function): void => {
+            // If has preset instructions, follow it
+            if (_.has(instructions, 'start')) {
                 if (instructions.start) {
-                    this.sendSessionStarted();
+                    this.sendSessionStarted(resolve);
                 } else {
-                    this.sendSessionStartupFailure();
+                    this.sendSessionStartupFailure(reject);
                 }
-            });
-        } else {    // Otherwise, wait for instruction
-            ipc.emit('wait-to-start');
-            ipc.on('start-success', (): void => {
-                this.sendSessionStarted();
-            });
-            ipc.on('start-fail', (): void => {
-                this.sendSessionStartupFailure();
-            });
-        }
-        return this;
+            } else {    // Otherwise, wait for instruction
+                ipc.emit('wait-to-start');
+                ipc.on('start-success', (): void => {
+                    this.sendSessionStarted(resolve);
+                });
+                ipc.on('start-fail', (): void => {
+                    this.sendSessionStartupFailure(reject);
+                });
+            }
+        });
     }
 
-    authorize(uri: string, cid: number): number {
+    authenticate(cb?: (err: any, value: any) => void): Promise<string> {
         throw new Error('Not yet implemented');
     }
 
-    authorizeUser(request: any, cid: number): number {
+    authorize(token: string, cb?: (err: any, value: any) => void): Promise<IIdentity> {
         throw new Error('Not yet implemented');
     }
 
-    stop(): Session {
-        throw new Error('Not yet implemented');
+    stop(cb?: (err: any, value: any) => void): Promise<void> {
+        return new Promise<void>((resolve: Function, reject: Function): void => {
+            this.terminateSession();
+            resolve();
+        }).nodeify(cb);
     }
 
-    // Don't see a test case for this function yet
-    destroy(): Session {
-        return this;
-    }
+    subscribe(subs: Subscription[],
+              cb?: (err: any) => void): Promise<void>;
 
-    openService(uri: string, cid: number): number {
-        // If has preset instructions, follow it
-        if (_.has(instructions, 'openService')) {
-            process.nextTick((): void => {
-                if (instructions.openService) {
-                    this.sendServiceOpened(cid);
-                } else {
-                    this.sendServiceOpenFailure(uri, cid);
-                }
-            });
-        } else {    // Otherwise, wait for instruction
-            ipc.emit('wait-to-openService', {
-                'uri': uri,
-                'cid': cid
-            });
-            ipc.on(util.format('openService-%d-success', cid), (): void => {
-                this.sendServiceOpened(cid);
-            });
-            ipc.on(util.format('openService-%d-fail', cid), (): void => {
-                this.sendServiceOpenFailure(uri, cid);
-            });
-        }
-        return cid;
-    }
+    subscribe(subs: Subscription[],
+              identity: IIdentity,
+              cb?: (err: any) => void): Promise<void>;
 
-    subscribe(subs: Subscription[], identity?: Identity, label?: string): Session {
+    subscribe(subs: Subscription[],
+              label: string,
+              cb?: (err: any) => void): Promise<void>;
+
+    subscribe(subs: Subscription[],
+              identity: IIdentity,
+              label: string,
+              cb?: (err: any) => void): Promise<void>;
+
+    subscribe(subs: Subscription[],
+              arg1?: IIdentity | string | ((err: any) => void),
+              arg2?: string | ((err: any) => void),
+              arg3?: (err: any) => void): Promise<void>
+    {
         // For subscribe, only communicate via ipc is supported
-        ipc.emit('wait-to-subscribe', subs);
-        _.forEach(subs, (sub: Subscription): void => {
-            var serviceUri = getServiceForSecurity(sub.security);
-            assert(SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri],
-                   'Invalid service name.');
-            var events: string[] = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri];
-            _.forEach(events, (e: string): void => {
-                ipc.on(util.format('subscription-%d-%s', sub.correlation, e), (): void => {
-                    this.sendSubscriptionData(e, sub.correlation);
+        ipc.emit('wait-to-subscribe',
+                 subs.map((sub: Subscription): number => {
+                     return sub.correlationId;
+                 }));
+
+        var cb: (err: any) => void = undefined;
+        if (typeof arguments[arguments.length - 1] === 'function') {
+           cb = arguments[arguments.length - 1];
+        }
+
+        return new Promise<void>((resolve: Function, reject: Function): void => {
+
+            var hasInvalidServiceUri = subs.some((sub: Subscription): boolean => {
+                var serviceUri = getServiceForSecurity(sub.security);
+                if (!SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri]) {
+                    return true;
+                }
+                return false;
+            });
+            if (hasInvalidServiceUri) {
+                reject(new Error('Invalid service name'));
+                return;
+            }
+            subs.forEach((sub: Subscription): void => {
+                var serviceUri = getServiceForSecurity(sub.security);
+                var events: string[] = SERVICE_TO_SUBSCRIPTION_EVENTS_MAP[serviceUri];
+                _.forEach(events, (e: string): void => {
+                    ipc.on(util.format('subscription-%d-%s', sub.correlationId, e), (): void => {
+                        this.sendSubscriptionData(e, sub);
+                    });
                 });
             });
-        });
-        return this;
+            resolve();
+        }).nodeify(cb);
     }
 
-    resubscribe(subs: Subscription[], label?: string): Session {
-        throw new Error('Not yet implemented');
-    }
-    unsubscribe(subs: Subscription[]): Session {
+    unsubscribe(subs: Subscription[]): void {
         // As long as we no longer send data event via ipc for unsubscribed cids, no-ops
-        ipc.emit('wait-to-unsubscribe', subs);
-        return this;
+        ipc.emit('wait-to-unsubscribe',
+                 subs.map((sub: Subscription): number => {
+                     return sub.correlationId;
+                 }));
     }
+
     request(uri: string,
             name: string,
             request: any,
-            cid: number,
-            identity?: Identity,
-            label?: string): number
+            callback: IRequestCallback): void;
+
+    request(uri: string,
+            name: string,
+            request: any,
+            identity: IIdentity,
+            callback: IRequestCallback): void;
+
+    request(uri: string,
+            name: string,
+            request: any,
+            label: string,
+            callback: IRequestCallback): void;
+
+    request(uri: string,
+            name: string,
+            request: any,
+            identity: IIdentity,
+            label: string,
+            callback: IRequestCallback): void;
+
+    request(uri: string,
+            name: string,
+            request: any,
+            arg3: Object | string | IRequestCallback,
+            arg4?: string | IRequestCallback,
+            arg5?: IRequestCallback): void
     {
-        assert(REQUEST_TO_RESPONSE_MAP[name], 'Invalid request name.');
+        var callback = Array.prototype.slice.call(arguments, -1)[0];
+        assert(typeof callback === 'function');
+
         var responseName = REQUEST_TO_RESPONSE_MAP[name];
+        if (!responseName) {
+            callback(new BlpApiError(
+                { reason: { description:  'Session Failed to Start.' } }));
+        }
+        var cid = this.nextCorrelatorId();
+
         // If has preset instructions, follow it
         if (_.has(instructions, 'request')) {
-            // throw immediately if the first instruction is throwError
-            if ('throwError' === instructions.request[0]) {
-                this.throwError();
+            // Generate error if requested.
+            if ('generateError' === instructions.request[0]) {
+                callback(new BlpApiError(
+                    { reason: { description:  'Error requested.' } }));
             } else {
                 Promise.each(instructions.request,
                              (s: string, i: number, length: number): boolean => {
                     assert('sendPartialRequestData' === s || 'sendFinalRequestData' === s,
                            'Invalid operation ' + s);
-                    this[s].call(this, responseName, cid);
+                    this[s].call(this, responseName, callback, cid);
                     return true;
                 });
             }
-        } else {    // Otherwise, wait for instruction(not working for throwError)
+        } else {    // Otherwise, wait for instruction(not working for generateError)
+            ipc.on('terminate-session', (): void => {
+                callback(new Error('session terminated'));
+            });
             ipc.emit('wait-to-request', {
                 'uri': uri,
                 'name': name,
@@ -272,12 +305,11 @@ export class Session extends events.EventEmitter implements ISession {
                 'cid': cid
             });
             ipc.on(util.format('request-%d-partial', cid), (): void => {
-                this.sendPartialRequestData(responseName, cid);
+                this.sendPartialRequestData(responseName, callback, cid);
             });
             ipc.on(util.format('request-%d-final', cid), (): void => {
-                this.sendFinalRequestData(responseName, cid);
+                this.sendFinalRequestData(responseName, callback, cid);
             });
         }
-        return cid;
     }
 }

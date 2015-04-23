@@ -155,30 +155,6 @@ function dispatchAction(actionMap: ActionMap,
     actionMap[action](req, res, next);
 }
 
-function doRequest(uri: string,
-                   requestName: string,
-                   identity: blpapi.Identity,
-                   req: Interface.IOurRequest,
-                   res: Interface.IOurResponse,
-                   next: restify.Next): void
-{
-    req.blpSession.request(uri,
-                           requestName,
-                           req.body,
-                           identity,
-                           (err: Error, data: any, last: boolean): void => {
-        if (err) {
-            req.log.error(err, 'Request error.');
-            return next(res.sendError(err));
-        }
-        res.sendChunk(data);
-        if (last) {
-            res.sendEnd(0, 'OK');
-            return next();
-        }
-    });
-}
-
 function onSubscribe(req: Interface.IOurRequest,
                      res: Interface.IOurResponse,
                      next: restify.Next): void
@@ -247,8 +223,14 @@ function onSubscribe(req: Interface.IOurRequest,
         return sub;
     });
 
-    // Subscribe user request through blpapi-wrapper
-    req.blpSession.subscribe(subscriptions, req.identity)
+    // Build argument list for call to 'subscribe'.
+    var args: any[] = [subscriptions];
+    // Append optional arguments.
+    if (req.identity) {
+        args.push(req.identity);
+    }
+    // Subscribe user request through blpapi-node API.
+    req.blpSession.subscribe.apply(req.blpSession, args)
         .then((): void => {
             if (!req.apiSession.expired) {
                 subscriptions.forEach((s: ISubscription): void => {
@@ -347,23 +329,35 @@ function onGetToken(req: Interface.IOurRequest,
                     res: Interface.IOurResponse,
                     next: restify.Next): void
 {
-    doRequest('//blp/apiauth', 'AuthorizationTokenRequest', null /* identity */, req, res, next);
+    req.blpSession.authenticate().then((token: string): void => {
+        res.sendWhole(0, 'OK', null /* properties */, token);
+        return next();
+    }).catch((err: Error): void => {
+        return next(res.sendError(err));
+    });
 }
 
 function onAuthorize(req: Interface.IOurRequest,
                      res: Interface.IOurResponse,
                      next: restify.Next): void
 {
-    if (!_.has(req, 'clientCert')) {
+    // Validate authorization request.
+    var errorString: string = null;
+    var token = req.header('blpapi-token');
+    if (!token || token.length === 0) {
+        errorString = 'Authorizing requires a "blpapi-token" in the request header.';
+    } else if (!_.has(req, 'clientCert')) {
         // We currently use the clientCert as the key when managing identities, so authorization
         // requests require you to have one.
-        var errorString = 'Authorizing requires a client cert';
+        errorString = 'Authorizing requires a client cert';
+    }
+    if (errorString) {
         req.log.debug(errorString);
         return next(new restify.BadRequestError(errorString));
     }
 
-    req.blpSession.authorizeUser(req.body)
-        .then((identity: blpapi.Identity): void => {
+    req.blpSession.authorize(token).
+        then((identity: blpapi.IIdentity): void => {
             auth.setIdentity(req, identity);
             res.sendWhole(0, 'OK');
             return next();
@@ -492,9 +486,31 @@ export function onRequest(req: Interface.IOurRequest,
                           next: restify.Next): void
 {
     assert(req.blpSession, 'blpSession not found');
-
     var uri = util.format('//%s/%s', req.query.ns, req.query.service);
-    doRequest(uri, req.query.type, req.identity, req, res, next);
+
+    // Build argument list for call to 'request'.
+    var args = [uri,
+                req.query.type,
+                req.body];
+
+    // Append optional arguments (identity and callback).
+    if (req.identity) {
+        args.push(req.identity);
+    }
+    args.push((err: Error, data?: any, last?: boolean): void =>
+              {
+                  if (err) {
+                      req.log.error(err, 'Request error.');
+                      return next(res.sendError(err));
+                  }
+                  res.sendChunk(data);
+                  if (last) {
+                      res.sendEnd(0, 'OK');
+                      return next();
+                  }
+              });
+
+    req.blpSession.request.apply(req.blpSession, args);
 }
 
 export function onPollSubscriptions(req: Interface.IOurRequest,
