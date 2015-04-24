@@ -13,14 +13,6 @@ For information on how to use the HTTP API, see the [HTTP API Guide].
 [HTTP API Guide]: doc/http-api-guide.md
 
 
-Hackathon Users
----------------
-
-Go to the [hackathon branch](http://github.com/bloomberg/blpapi-http/tree/hackathon)
-for documentation and examples for what is running at
-http://http-api.openbloomberg.com.
-
-
 Getting Involved
 ----------------
 

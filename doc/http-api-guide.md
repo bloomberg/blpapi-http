@@ -7,11 +7,7 @@ subscriptions for live data.
 
 This document provides an overview of the [HTTP API]: the URLs to use, the
 formatting for the HTTP request/response, and the formatting for WebSocket
-subscriptions.  Bloomberg operates a server at
-https://http-api.openbloomberg.com/ that runs an instance of this API for demo
-and other purposes (e.g., hackathons). All examples in this document, as well
-as elsewhere in this project, are written to work with this server (e.g., they
-use client certificates for authentication/identity).
+subscriptions.
 
 This document also includes basic information about some of the underlying
 [Open API] operations. For more details on the [Open API], refer to the
@@ -55,7 +51,7 @@ Clients access services that use the request/response paradigm via a HTTP post
 to the path `/request`:
 
 ```
-https://http-api.openbloomberg.com/request?ns=<namespace>&service=<service>&type=<requestType>
+https://http-api-host/request?ns=<namespace>&service=<service>&type=<requestType>
 ```
 
 `/request` requires three query parameters:
@@ -77,7 +73,7 @@ As an example, the following will request the open and last price for IBM and
 Apple stock for each day during the period Jan 1 - 5, 2012.
 
 ```
-curl -X POST 'https://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=HistoricalDataRequest' \
+curl -X POST 'https://http-api-host/request?ns=blp&service=refdata&type=HistoricalDataRequest' \
     --cacert bloomberg.crt \
     --cert   client.crt    \
     --key    client.key    \
@@ -198,7 +194,7 @@ request must specify at least one security and at least one field.
 Example request/response:
 
 ```
-curl -X POST 'https://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=ReferenceDataRequest' \
+curl -X POST 'https://http-api-host/request?ns=blp&service=refdata&type=ReferenceDataRequest' \
     --cacert bloomberg.crt \
     --cert   client.crt    \
     --key    client.key    \
@@ -253,7 +249,7 @@ specify `"returnFieldDocumentation": "true"`.
 Example request/response:
 
 ```
-curl -X POST 'https://http-api.openbloomberg.com/request&ns=blp&service=apiflds&type=FieldInfoRequest' \
+curl -X POST 'https://http-api-host/request&ns=blp&service=apiflds&type=FieldInfoRequest' \
     --cacert bloomberg.crt \
     --cert   client.crt    \
     --key    client.key    \

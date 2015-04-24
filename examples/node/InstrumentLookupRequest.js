@@ -2,7 +2,7 @@
 var https = require('https');
 var fs = require('fs');
 
-var host = process.argv[2] || "http-api.openbloomberg.com";
+var host = process.argv[2] || "http-api-host";
 var port = 443
 
 var options = {

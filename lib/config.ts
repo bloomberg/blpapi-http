@@ -80,21 +80,21 @@ export var emitter = new events.EventEmitter();
                 arg: 'https-enable'
             },
             'ca': {
-                doc: 'HTTPS server ca',
+                doc: 'Root certificate authority',
                 format: String,
-                default: '../keys/bloomberg-ca-crt.pem',
+                default: '../keys/root-ca-crt.pem',
                 arg: 'https-ca'
             },
             'cert': {
                 doc: 'HTTPS server certification',
                 format: String,
-                default: '../keys/hackathon-crt.pem',
+                default: '../keys/server-crt.pem',
                 arg: 'https-cert'
             },
             'key': {
                 doc: 'HTTPS server key',
                 format: String,
-                default: '../keys/hackathon-key.pem',
+                default: '../keys/server-key.pem',
                 arg: 'https-key'
             },
             'crl': {
