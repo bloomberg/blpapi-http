@@ -9,7 +9,7 @@ fi
 
 REQUEST="$1"
 
-curl -v -X POST "https://http-api.openbloomberg.com/request?ns=blp&service=instruments&type=curveListRequest"  \
+curl -v -X POST "https://http-api-host/request?ns=blp&service=instruments&type=curveListRequest"  \
      --cacert bloomberg.crt \
      --cert   client.crt    \
      --key    client.key    \

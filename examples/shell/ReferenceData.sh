@@ -8,7 +8,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 REQUEST="$1"
-curl -v -X POST "https://http-api.openbloomberg.com/request?ns=blp&service=refdata&type=ReferenceDataRequest"  \
+curl -v -X POST "https://http-api-host/request?ns=blp&service=refdata&type=ReferenceDataRequest"  \
     --cacert bloomberg.crt \
     --cert   client.crt    \
     --key    client.key    \

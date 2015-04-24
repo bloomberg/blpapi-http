@@ -7,9 +7,9 @@
     "expiration" : 20,
     "https": {
         "enable": true,
-        "ca": "../keys/bloomberg-ca-crt.pem",
-        "cert": "../keys/hackathon-crt.pem",
-        "key": "../keys/hackathon-key.pem"
+        "ca": "../keys/root-ca-crt.pem",
+        "cert": "../keys/server-crt.pem",
+        "key": "../keys/server-key.pem"
     },
     "logging": {
         "stdout": true,

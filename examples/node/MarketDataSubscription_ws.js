@@ -51,7 +51,7 @@ function dispatch(socket, msg) {
 
 // main
 var argv = process.argv.slice(2);
-var host = (argv.length > 0) ? argv[0] : 'http-api.openbloomberg.com';
+var host = (argv.length > 0) ? argv[0] : 'http-api-host';
 var port = (argv.length > 1) ? argv[1] : 8080;
 
 var url = util.format('ws://%s:%s', host, port);

@@ -13,7 +13,7 @@ var SUBSCRIPTIONS = [
 
 // main
 var argv = process.argv.slice(2);
-var host = (argv.length > 0) ? argv[0] : 'http-api.openbloomberg.com';
+var host = (argv.length > 0) ? argv[0] : 'http-api-host';
 var port = (argv.length > 1) ? argv[1] : 8081;
 var ns = 'subscription';
 

@@ -2,7 +2,7 @@ var fs = require('fs');
 var util = require('util');
 var request = require("request");
 
-var host = process.argv[2] || 'http-api.openbloomberg.com';
+var host = process.argv[2] || 'http-api-host';
 var port = 3000;
 var url = 'https://' + host + ':' + port;
 var NUM_REQUEST = 10;   // Number of long-poll requests before unsubscribe
