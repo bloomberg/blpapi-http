@@ -12,6 +12,9 @@ For information on how to use the HTTP API, see the [HTTP API Guide].
 [GitHub repository]: http://github.com/bloomberg/blpapi-http
 [HTTP API Guide]: doc/http-api-guide.md
 
+Note that the HTTP wrapper for the [Bloomberg Open API] is sitll under active
+development and interfaces are subject to change.
+
 
 Getting Involved
 ----------------
