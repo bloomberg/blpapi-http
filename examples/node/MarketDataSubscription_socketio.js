@@ -1,8 +1,7 @@
-// usage: node MarketDataSubscription_socketio.js [<host> [<port>]]
-
 var fs = require('fs');
 var util = require('util');
 var io = require('socket.io-client');
+var opts = require('./cmdline').parse(); // Parse cmdline options.
 
 var N_DATA_EVENTS = 2; // Number of subscription data received before unsubscribe
 
@@ -12,12 +11,9 @@ var SUBSCRIPTIONS = [
 ];
 
 // main
-var argv = process.argv.slice(2);
-var host = (argv.length > 0) ? argv[0] : 'http-api-host';
-var port = (argv.length > 1) ? argv[1] : 8081;
 var ns = 'subscription';
+var url = util.format('%s:%s/%s', opts.host, opts.port, ns);
 
-var url = util.format('%s:%s/%s', host, port, ns);
 var opt = {
     secure: true,
     cert: fs.readFileSync('client.crt'),
