@@ -1,17 +1,16 @@
 var fs = require('fs');
 var util = require('util');
 var request = require("request");
+var opts = require("./cmdline").parse(); // Parse cmdline options.
 
-var host = process.argv[2] || 'http-api-host';
-var port = 3000;
-var url = 'https://' + host + ':' + port;
-var NUM_REQUEST = 10;   // Number of long-poll requests before unsubscribe
-var counter = 0;
+var url = 'https://' + opts.host + ':' + opts.port;
 var opt = {
     cert: fs.readFileSync('client.crt'),
     key: fs.readFileSync('client.key'),
     ca: fs.readFileSync('bloomberg.crt')
-};
+}
+var NUM_REQUEST = 10; // Number of long-poll requests before unsubscribe.
+var counter = 0;
 
 function subscribe()
 {
