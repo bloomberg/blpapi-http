@@ -5,6 +5,7 @@
 # usage: ./gen_client_cert.sh <path>
 
 ## INCLUDES ##
+# shellcheck source=scripts/util.sh
 source "$(dirname "$0")/util.sh"
 
 ## MAIN ##
