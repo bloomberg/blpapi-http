@@ -5,10 +5,12 @@ SRCS_TEST_TS :=
 SRCS_TEST_JS :=
 SRCS_TSLINT_RULES_TS :=
 SRCS_TSLINT_RULES_JS :=
+SRCS_SHELL :=
 
 # known directories within the project
 TEST_DIR := test
 TSLINT_RULES_DIR := tslint-rules
+SCRIPTS_DIR = scripts
 
 # glob all source TypeScript files
 SRCS_TS += index.ts
@@ -22,6 +24,9 @@ SRCS_TSLINT_RULES_TS += $(wildcard $(TSLINT_RULES_DIR)/*.ts)
 SRCS_JS += $(patsubst %.ts,%.js,$(SRCS_TS))
 SRCS_TEST_JS += $(patsubst %.ts,%.js,$(SRCS_TEST_TS))
 SRCS_TSLINT_RULES_JS += $(patsubst %.ts,%.js,$(SRCS_TSLINT_RULES_TS))
+
+# glob scripts
+SRCS_SHELL += $(shell find $(SCRIPTS_DIR) -type f -name '*.sh')
 
 # setup variables for program execution
 BIN_PREFIX := $(shell npm bin)
@@ -37,6 +42,9 @@ TSLINT_TARGET := .tslint.d
 TSLINT_D := $(ROOT_PREFIX)/tslint/lib/tslint.d.ts
 TSLINT_TEST_TARGET := $(addprefix $(TEST_DIR)/,.tslint.d)
 
+SHELLCHECK := shellcheck
+SHELLCHECK_TARGET := $(addprefix $(SCRIPTS_DIR)/,.shellcheck.d)
+
 MOCHA_BIN := $(addprefix $(BIN_PREFIX)/,mocha)
 MOCHA_FLAGS := --reporter spec
 MOCHA := $(MOCHA_BIN) $(MOCHA_FLAGS)
@@ -45,16 +53,16 @@ RM ?= rm -f
 TOUCH ?= touch
 
 # top-level targets
-.PHONY: all build check dependencies tslint test test-mocha clean
+.PHONY: all build check dependencies shellcheck tslint test test-mocha clean
 
 all: dependencies build tslint
 
-check: all test
+check: all lint test
 
 dependencies:
 	@npm install
 
-lint: tslint tslint-test
+lint: tslint tslint-test shellcheck
 
 test: test-mocha
 
@@ -66,6 +74,8 @@ tslint: $(TSLINT_TARGET)
 
 tslint-test: $(TSLINT_TEST_TARGET)
 
+shellcheck: $(SHELLCHECK_TARGET)
+
 test-mocha: build build-test tslint-test
 	@$(MOCHA)
 
@@ -76,6 +86,11 @@ clean:
 	@$(RM) $(TSC_TARGET) $(TSLINT_TARGET) $(TSLINT_TEST_TARGET)
 	@$(RM) $(SRCS_TSLINT_RULES_JS)
 
+
+$(SHELLCHECK_TARGET): $(SRCS_SHELL)
+	@$(RM) $(SHELLCHECK_TARGET)
+	@$(SHELLCHECK) $(SRCS_SHELL)
+	@$(TOUCH) $(SHELLCHECK_TARGET)
 
 $(TSLINT_TARGET): $(SRCS_TS) $(TSLINT_CONFIG) $(SRCS_TSLINT_RULES_JS)
 	@$(RM) $(TSLINT_TARGET)
