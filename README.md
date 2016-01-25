@@ -4,9 +4,13 @@ blpapi-http
 
 HTTP wrapper for [Bloomberg Open API].
 
+Note that a functioning BLPAPI endpoint is required to use this HTTP wrapper.
+
 Find source code in the [GitHub repository].
 
-For information on how to use the HTTP API, see the [HTTP API Guide].
+For information on how to use the HTTP API, see the [HTTP API Guide].  For
+Bloomberg support related questions with respect to BLPAPI, please email
+open-tech@bloomberg.net.
 
 [Bloomberg Open API]: http://bloomberglabs.com/api
 [GitHub repository]: http://github.com/bloomberg/blpapi-http
