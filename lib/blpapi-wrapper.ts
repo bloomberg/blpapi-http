@@ -76,8 +76,8 @@ var EVENT_TYPE = {
 var REQUEST_TO_RESPONSE_MAP: { [index: string]: string; } = {
     // //blp/refdata
     'HistoricalDataRequest': 'HistoricalDataResponse',
-    'IntraDayTickRequest':   'IntraDayTickResponse',
-    'IntraDayBarRequest':    'IntraDayBarResponse',
+    'IntradayTickRequest':   'IntradayTickResponse',
+    'IntradayBarRequest':    'IntradayBarResponse',
     'ReferenceDataRequest':  'ReferenceDataResponse',
     'PortfolioDataRequest':  'PortfolioDataResponse',
     'BeqsRequest':           'BeqsResponse',
