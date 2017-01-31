@@ -1,9 +1,8 @@
 /// <reference path='../typings/tsd.d.ts' />
 
-import blpapi = require('blpapi');
 import restify = require('restify');
 import bunyan = require('bunyan');
-import BAPI = require('./blpapi-wrapper');
+import BAPI = require('blpapi');
 
 export interface IBufferedData<T> {
     buffer: T[];
@@ -52,7 +51,8 @@ export interface IOurRequest extends restify.Request {
     clientCert?: any;
     blpSession: BAPI.Session;
     apiSession?: IAPISession;
-    identity?: blpapi.Identity;
+    identity?: BAPI.IIdentity;
+    label?: string;
 }
 
 export interface IOurResponse extends restify.Response {
